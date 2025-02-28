@@ -1,17 +1,24 @@
-const express = require("express")
-const bcrypt = require('bcrypt')
-const app = express() 
+const express = require('express');
+const userRoutes = require('./routes/userRoutes');
+const spaceRoutes = require('./routes/spaceRoutes');
+const spaceMemberRoutes = require('./routes/spaceMembersRoutes'); 
 
-app.use(express.static("public"))
-app.use(express.json())
 
-app.get('/',(req, res) => {
-  console.log('Here')
-  res.send("Hi")
-})
+require('dotenv').config();
 
-const userRouter = require('./routes/users')
+const app = express();
 
-app.use('/users', userRouter)
+// Middleware to parse JSON
+app.use(express.json());
 
-app.listen(3000)
+// Use routes
+app.use('/users', userRoutes);
+app.use('/spaces', spaceRoutes);
+app.use('/space-members', spaceMemberRoutes); 
+
+
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
