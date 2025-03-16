@@ -1,10 +1,18 @@
-const pool = require('../config/dbConnection');
+import db from "../config/database.js";
+import bcrypt from "bcrypt";
 
-// Function to create a new user
-const createUser = async (username, email, password_hash) => {
-  const result = await pool.query(
-    'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING *',
-    [username, email, password_hash]
+const saltRounds = 10;
+
+export const findUserByEmail = async (email) => {
+  const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+  return result.rows[0];
+};
+
+export const createUser = async (username, email, password) => {
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+  const result = await db.query(
+    "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *",
+    [username, email, hashedPassword]
   );
   return result.rows[0];
 };
