@@ -1,27 +1,86 @@
-const { createUser, getUserById } = require('../models/user');
+const passport = require("passport");
+const bcrypt = require("bcrypt"); 
+const { getUserByEmail, createNewUser } = require("../models/user");
 
-// Controller to create a new user
-exports.createUser = async (req, res) => {
-  try {
-    const { username, email, password_hash } = req.body;
-    const newUser = await createUser(username, email, password_hash);
-    res.status(201).json(newUser);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+// GET request 
+// ---------------
+
+const homePage  = (req, res) => {
+  if (req.isAuthenticated()) {
+    res.send("this is the Home Page");
+  } else {
+    res.redirect("/login");
   }
 };
 
-// Controller to get a user by ID
-exports.getUserById = async (req, res) => {
-  try {
-    const user = await getUserById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+const loginPage  = (req, res) => {
+  res.send("login Page");
+};
+
+const registerPage  = (req, res) => {
+  res.send("register Page");
+};
+
+const logoutPage = (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send("logout error");
     }
-    res.json(user);
+    res.send("logged out done");
+  });
+};
+
+//  POST request 
+// ---------------
+
+const handleLogin = (req, res, next) => {
+  passport.authenticate("local", {
+    successRedirect: "/",
+    failureRedirect: "/login",
+  })(req, res, next);  
+};
+
+const handleRegistration = async (req, res) => {
+  const { username, email, password } = req.body;
+
+  
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(email)) {
+    return res.status(400).send("invalid email format");
+  }
+
+  try {
+    
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).send("user already exists");
+    }
+    
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const newUser = await createNewUser(username, email, hashedPassword);
+ 
+    req.login(newUser, (err) => {
+      if (err) {
+        return res.status(500).send("error logging in after registration");
+      }
+      res.send("successfully registered and logged in");
+    });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error(err);
+    res.status(500).send("server error");
   }
 };
+
+
+module.exports = {
+  homePage,
+  loginPage,
+  handleLogin,
+  registerPage,
+  handleRegistration,
+  logoutPage,
+};
+
