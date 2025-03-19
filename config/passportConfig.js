@@ -1,21 +1,23 @@
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import bcrypt from "bcrypt";
-import db from "./database.js";
+const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
+const bcrypt = require("bcrypt");
+const pool = require('../config/dbConnection');
+
 
 passport.use(
-  new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
+  new LocalStrategy({ usernameField: "email", passwordField: "password", }, async (email, password, done) => {
     try {
-      const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
-
+      const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+      
       if (result.rows.length === 0) {
-        return done(null, false, { message: "User not found" });
+        return done(null, false, { message: "user not found" });
       }
 
       const user = result.rows[0];
       const isMatch = await bcrypt.compare(password, user.password);
+      
 
-      if (!isMatch) return done(null, false, { message: "Incorrect password" });
+      if (!isMatch) return done(null, false, { message: "incorrect password" });
 
       return done(null, user);
     } catch (err) {
@@ -30,7 +32,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const result = await db.query("SELECT * FROM users WHERE id = $1", [id]);
+    const result = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
     if (result.rows.length > 0) {
       done(null, result.rows[0]);
     } else {
@@ -40,3 +42,5 @@ passport.deserializeUser(async (id, done) => {
     done(err);
   }
 });
+
+module.exports = passport;
