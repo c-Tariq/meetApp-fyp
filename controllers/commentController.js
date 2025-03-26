@@ -3,11 +3,12 @@ const { addComment, getCommentsByTopicId } = require('../models/comment');
 exports.addComment = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const { user_id, content } = req.body;
+    const { content } = req.body;
+    const user_id = req.user.user_id; 
 
     if (!content) {
-        return res.status(400).json({ message: 'Comment content is required' });
-      }
+      return res.status(400).json({ message: 'Comment content is required' });
+    }
     const newComment = await addComment(topicId, user_id, content);
     res.status(201).json(newComment);
   } catch (err) {

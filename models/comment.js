@@ -12,7 +12,7 @@ const getCommentsByTopicId = async (topicId) => {
   const result = await pool.query(
     `SELECT c.*, u.username 
      FROM comment c
-     JOIN user u ON c.user_id = u.user_id
+     JOIN users u ON c.user_id = u.user_id
      WHERE c.topic_id = $1`,
     [topicId]
   );

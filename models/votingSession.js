@@ -23,6 +23,14 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
     return result.rows.length > 0;
   };
 
+  const getPollsByTopicId = async (topicId) => {
+    const result = await pool.query(
+      'SELECT * FROM polls WHERE topic_id = $1',
+      [topicId]
+    );
+    return result.rows;
+  };
+
 //   Add option to a poll
   const addPollOption = async (pollId, optionText) => {
     const result = await pool.query(

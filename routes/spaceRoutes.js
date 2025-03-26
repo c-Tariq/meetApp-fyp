@@ -1,14 +1,17 @@
 const express = require('express');
-const { createSpace, getAllSpaces, deleteSpace } = require('../controllers/spaceController');
 const router = express.Router();
+const spaceController = require('../controllers/spaceController');
+const { ensureAuthenticated } = require('../middleware/auth');
+const spaceMemberRoutes = require('./spaceMembersRoutes');
+const meetingRoutes = require('./meetingRoutes');
 
-// Route to create a new space
-router.post('/', createSpace);
+// Space routes
+router.post('/', ensureAuthenticated, spaceController.createSpace);       // POST /spaces
+router.get('/', ensureAuthenticated, spaceController.getAllSpaces);       // GET /spaces
+router.delete('/:spaceId', ensureAuthenticated, spaceController.deleteSpace); // DELETE /spaces/:spaceId
 
-// Route to get all spaces
-router.get('/', getAllSpaces);
-
-// Route to delete a space
-router.delete('/:space_id', deleteSpace); 
+// Mount sub-routers
+router.use('/:spaceId/members', spaceMemberRoutes);    // /spaces/:spaceId/members
+router.use('/:spaceId/meetings', meetingRoutes);       // /spaces/:spaceId/meetings
 
 module.exports = router;

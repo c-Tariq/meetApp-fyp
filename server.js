@@ -1,42 +1,35 @@
 const express = require('express');
-const passport = require("passport");
-const session = require("express-session");  
-
-
+const passport = require('passport');
+const session = require('express-session');
 const userRoutes = require('./routes/userRoutes');
 const spaceRoutes = require('./routes/spaceRoutes');
-const spaceMemberRoutes = require('./routes/spaceMembersRoutes'); 
-const pool = require('./config/dbConnection'); 
-
+const pool = require('./config/dbConnection');
 
 require('dotenv').config();
 require('./config/passportConfig');
 
 const app = express();
 
-// Middleware to parse JSON
+// Middleware to parse JSON and URL-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
+// Session middleware
 app.use(
   session({
-    secret: process.env.SESSION_SECRET, 
+    secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
   })
 );
+
+// Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-// Use routes
-app.use('/users', userRoutes);
+// Mount routes
+app.use('/', userRoutes);
 app.use('/spaces', spaceRoutes);
-app.use('/space-members', spaceMemberRoutes); 
-app.use("/", userRoutes);  
-
-
 
 // Start the server
 const PORT = process.env.PORT || 5000;

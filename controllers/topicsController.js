@@ -1,13 +1,14 @@
-const { addTopic, getTopicsByMeetingId, isTopicInMeeting, getTopicById } = require('../models/topics');
+const { addTopic, getTopicsByMeetingId, isTopicInMeeting, getTopicById } = require('../models/topic');
 const { isSpaceAdmin } = require('../models/space');
 
 exports.addTopic = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const { topic_title, user_id } = req.body;
+    const { spaceId } = req.params;
+    const { topic_title } = req.body;
+    const user_id = req.user.user_id; 
 
-    // Authorization check (assuming similar space admin pattern)
-    const isAdmin = await isSpaceAdmin(meetingId, user_id); // You might need to adjust this based on your auth flow
+    const isAdmin = await isSpaceAdmin(spaceId, user_id); 
     if (!isAdmin) {
       return res.status(403).json({ message: 'You are not authorized to add topics' });
     }

@@ -1,10 +1,11 @@
-const { createMeeting, getMeetingsBySpaceId, getMeetingById, searchMeetingsByName, isMeetingInSpace } = require('../models/meeting');
+const { createMeeting, getMeetingsBySpaceId, getMeetingById, searchMeetingsByName } = require('../models/meeting');
 const { isSpaceAdmin } = require('../models/space');
 
 exports.createMeeting = async (req, res) => {
   try {
     const { spaceId } = req.params;
-    const { title, scheduledTime, user_id } = req.body;
+    const { title, scheduledTime } = req.body;
+    const user_id = req.user.user_id; // Use authenticated user's ID
 
     const isAdmin = await isSpaceAdmin(spaceId, user_id);
     if (!isAdmin) {
@@ -38,7 +39,6 @@ exports.getMeeting = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const meeting = await getMeetingById(meetingId);
-
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
@@ -52,11 +52,9 @@ exports.getMeeting = async (req, res) => {
 exports.searchMeetings = async (req, res) => {
   try {
     const { term } = req.query;
-
     if (!term) {
       return res.status(400).json({ message: 'Search term is required' });
     }
-
     const results = await searchMeetingsByName(term);
     res.json(results);
   } catch (err) {
@@ -64,19 +62,3 @@ exports.searchMeetings = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
-
-// exports.verifyMeetingSpace = async (req, res, next) => {
-//   try {
-//     const { meetingId, spaceId } = req.params;
-//     const isValid = await isMeetingInSpace(meetingId, spaceId);
-
-//     if (!isValid) {
-//       return res.status(403).json({ message: 'Meeting does not belong to this space' });
-//     }
-
-//     next();
-//   } catch (err) {
-//     console.error(err.message);
-//     res.status(500).send('Server Error');
-//   }
-// };

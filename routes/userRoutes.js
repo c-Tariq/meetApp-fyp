@@ -1,34 +1,16 @@
 const express = require('express');
-const {
-  homePage,
-  loginPage,
-  registerPage,
-  logoutPage,
-  handleLogin,
-  handleRegistration,
-} = require('../controllers/userController'); 
-
 const router = express.Router();
+const userController = require('../controllers/userController');
+const { ensureAuthenticated } = require('../middleware/auth');
 
+// Public routes
+router.get('/login', userController.loginPage);
+router.post('/login', userController.handleLogin);
+router.get('/register', userController.registerPage);
+router.post('/register', userController.handleRegistration);
 
-//   GET request 
-//   ---------------
-
-router.get("/", homePage);
-
-router.get("/login", loginPage); 
-
-router.get("/register", registerPage);
-
-router.get("/logout", logoutPage);
-
-
-//  POST request 
-// ---------------
-
-router.post("/login", handleLogin);
-
-router.post("/register", handleRegistration);
-
+// Protected routes
+router.get('/', ensureAuthenticated, userController.homePage);
+router.get('/logout', ensureAuthenticated, userController.logoutPage);
 
 module.exports = router;

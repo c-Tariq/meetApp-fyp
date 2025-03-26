@@ -1,10 +1,14 @@
 const { addUserToSpace, isUserMemberOfSpace, getAllMembersOfSpace } = require('../models/spaceMembers');
-
+const {isSpaceAdmin } = require('../models/space');
 // Controller to add a user to a space
 exports.addUserToSpace = async (req, res) => {
   try {
     const { space_id, user_id } = req.body;
 
+    const isAdmin = await isSpaceAdmin(space_id, req.user.user_id);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'You are not authorized to add members to this space' });
+    }
     // Check if the user is already a member of the space
     const isMember = await isUserMemberOfSpace(space_id, user_id);
     if (isMember) {
