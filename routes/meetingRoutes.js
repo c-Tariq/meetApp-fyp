@@ -9,6 +9,7 @@ const attendanceRoutes = require('./attendanceRoutes');
 router.post('/', ensureAuthenticated, meetingController.createMeeting);    // POST /spaces/:spaceId/meetings
 router.get('/', ensureAuthenticated, meetingController.getSpaceMeetings);  // GET /spaces/:spaceId/meetings
 router.get('/:meetingId', ensureAuthenticated, meetingController.getMeeting); // GET /spaces/:spaceId/meetings/:meetingId
+router.post('/process-meeting',ensureAuthenticated, meetingController.processTranscript);
 
 // Special case: Search meetings (not tied to a specific space)
 router.get('/search', ensureAuthenticated, meetingController.searchMeetings); // GET /spaces/:spaceId/meetings/search
