@@ -1,6 +1,7 @@
 const { createMeeting, getMeetingsBySpaceId, getMeetingById, searchMeetingsByName } = require('../models/meeting');
 const { isSpaceAdmin } = require('../models/space');
 const openai = require('../config/openaiConfig');
+
 exports.createMeeting = async (req, res) => {
   try {
     const { spaceId } = req.params;
