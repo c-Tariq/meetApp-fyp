@@ -1,27 +1,37 @@
-const { createMeeting, getMeetingsBySpaceId, getMeetingById, searchMeetingsByName } = require('../models/meeting');
-const { isSpaceAdmin } = require('../models/space');
-const openai = require('../config/openaiConfig');
+const {
+  createMeeting,
+  getMeetingsBySpaceId,
+  getMeetingById,
+  searchMeetingsByName,
+  updateMeetingStatus,
+} = require("../models/meeting");
+const { isSpaceAdmin } = require("../models/space");
+const openai = require("../config/openaiConfig");
 
 exports.createMeeting = async (req, res) => {
   try {
     const { spaceId } = req.params;
-    const { title, scheduledTime } = req.body;
+    const { title, scheduled_time } = req.body;
     const user_id = req.user.user_id; // Use authenticated user's ID
 
     const isAdmin = await isSpaceAdmin(spaceId, user_id);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'You are not authorized to create a meeting' });
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to create a meeting" });
     }
 
-    if (!title || !scheduledTime) {
-      return res.status(400).json({ message: 'Title and scheduled time are required' });
+    if (!title || !scheduled_time) {
+      return res
+        .status(400)
+        .json({ message: "Title and scheduled time are required" });
     }
 
-    const newMeeting = await createMeeting(spaceId, title, scheduledTime);
+    const newMeeting = await createMeeting(spaceId, title, scheduled_time);
     res.status(201).json(newMeeting);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send("Server Error");
   }
 };
 
@@ -32,7 +42,7 @@ exports.getSpaceMeetings = async (req, res) => {
     res.json(meetings);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send("Server Error");
   }
 };
 
@@ -41,12 +51,12 @@ exports.getMeeting = async (req, res) => {
     const { meetingId } = req.params;
     const meeting = await getMeetingById(meetingId);
     if (!meeting) {
-      return res.status(404).json({ message: 'Meeting not found' });
+      return res.status(404).json({ message: "Meeting not found" });
     }
     res.json(meeting);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send("Server Error");
   }
 };
 
@@ -54,13 +64,13 @@ exports.searchMeetings = async (req, res) => {
   try {
     const { term } = req.query;
     if (!term) {
-      return res.status(400).json({ message: 'Search term is required' });
+      return res.status(400).json({ message: "Search term is required" });
     }
     const results = await searchMeetingsByName(term);
     res.json(results);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send("Server Error");
   }
 };
 
@@ -96,7 +106,7 @@ function getSystemPrompts(isArabicLang) {
 - الموعد النهائي للتنفيذ (إن وجد).
 قم بتنسيق الإخراج كقائمة نقطية واضحة (باستخدام '-' أو '*') لكل مهمة أو قرار أو نقطة متابعة.
 قدم القائمة مباشرة بدون أي مقدمات أو جمل ختامية. ركز فقط على البنود التي تتطلب إجراءً أو متابعة. استخدم اللغة العربية الفصحى.
-`.trim()
+`.trim(),
     };
   } else {
     return {
@@ -122,7 +132,7 @@ For each item in the list, if mentioned in the transcript, include:
 - The deadline (if specified).
 Format the output *only* as a clear bulleted list (using '-' or '*') for each task, decision, or follow-up item.
 Present the list directly without any introductory or concluding sentences. Focus solely on items requiring action or tracking. Use formal and clear English.
-`.trim()
+`.trim(),
     };
   }
 }
@@ -166,7 +176,47 @@ exports.processTranscript = async function (req, res) {
       console.error("Error Response Data:", error.response.data);
       console.error("Error Response Status:", error.response.status);
     }
-    res.status(500).json({ error: "Something went wrong processing the transcript" });
+    res
+      .status(500)
+      .json({ error: "Something went wrong processing the transcript" });
   }
-}
+};
 
+exports.updateMeetingStatus = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { spaceId } = req.params;
+    const { status } = req.body; // Expecting { "status": "In Progress" | "Concluded" | "Upcoming" }
+    const user_id = req.user.user_id;
+
+    // 1. Validate input status
+    const allowedStatuses = ["Upcoming", "In Progress", "Concluded"];
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message:
+          "Invalid or missing status. Must be one of: Upcoming, In Progress, Concluded.",
+      });
+    }
+
+    const isAdmin = await isSpaceAdmin(spaceId, user_id);
+    if (!isAdmin) {
+      return res.status(403).json({
+        message: "You are not authorized to update this meeting's status",
+      });
+    }
+
+    const updatedMeeting = await updateMeetingStatus(meetingId, status);
+    if (!updatedMeeting) {
+      return res
+        .status(404)
+        .json({ message: "Meeting not found during update attempt." });
+    }
+    res.status(200).json(updatedMeeting);
+  } catch (err) {
+    console.error("Error updating meeting status:", err.message);
+    if (err.message.includes("Invalid status value")) {
+      return res.status(400).json({ message: err.message });
+    }
+    res.status(500).send("Server Error");
+  }
+};
