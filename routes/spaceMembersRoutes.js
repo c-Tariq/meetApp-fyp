@@ -1,10 +1,28 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router({ mergeParams: true }); // Access :spaceId from parent
-const spaceMembersController = require('../controllers/spaceMembersController');
-const { ensureAuthenticated } = require('../middleware/auth');
+const spaceMembersController = require("../controllers/spaceMembersController");
+const { ensureAuthenticated } = require("../middleware/auth");
 
 // Protected routes
-router.post('/', ensureAuthenticated, spaceMembersController.addUserToSpace); // POST /spaces/:spaceId/members
-router.get('/', ensureAuthenticated, spaceMembersController.getAllMembersOfSpace); // GET /spaces/:spaceId/members
+router.post("/", ensureAuthenticated, spaceMembersController.addUserToSpace); // POST /spaces/:spaceId/members
+router.get(
+  "/",
+  ensureAuthenticated,
+  spaceMembersController.getAllMembersOfSpace
+); // GET /spaces/:spaceId/members
+
+// Invite user
+router.post(
+  "/invite",
+  ensureAuthenticated,
+  spaceMembersController.inviteToSpace
+); // POST /spaces/:spaceId/members/invite
+
+// Accept invitation
+router.get(
+  "/accept/:token",
+  ensureAuthenticated,
+  spaceMembersController.acceptInvitation
+); // POST /spaces/:spaceId/members/accept//
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const attendanceModel = require('../models/attendance');
+const attendanceModel = require("../models/attendance");
 
 // Mark attendance for a user in a meeting
 exports.markAttendance = async (req, res) => {
@@ -9,15 +9,19 @@ exports.markAttendance = async (req, res) => {
 
     // Validate request body
     if (isPresent === undefined) {
-      return res.status(400).json({ message: 'isPresent is required' });
+      return res.status(400).json({ message: "isPresent is required" });
     }
 
     // Call the model function to mark attendance (assuming user marks their own)
-    const attendance = await attendanceModel.markAttendance(meetingId, userId, isPresent);
+    const attendance = await attendanceModel.markAttendance(
+      meetingId,
+      userId,
+      isPresent
+    );
     res.status(200).json(attendance);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send("Server Error");
   }
 };
 
@@ -25,11 +29,12 @@ exports.markAttendance = async (req, res) => {
 exports.getAttendanceByMeetingId = async (req, res) => {
   try {
     const { meetingId } = req.params;
-
-    const attendanceRecords = await attendanceModel.getAttendanceByMeetingId(meetingId);
+    const attendanceRecords = await attendanceModel.getAttendanceByMeetingId(
+      meetingId
+    );
     res.status(200).json(attendanceRecords);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send("Server Error");
   }
 };

@@ -1,4 +1,4 @@
-const pool = require('../config/dbConnection');
+const pool = require("../config/dbConnection");
 
 const markAttendance = async (meetingId, userId, isPresent) => {
   const result = await pool.query(
@@ -16,7 +16,7 @@ const getAttendanceByMeetingId = async (meetingId) => {
   const result = await pool.query(
     `SELECT a.*, u.username 
      FROM attendance a
-     JOIN user u ON a.user_id = u.user_id
+     JOIN users u ON a.user_id = u.user_id
      WHERE a.meeting_id = $1`,
     [meetingId]
   );
@@ -25,5 +25,5 @@ const getAttendanceByMeetingId = async (meetingId) => {
 
 module.exports = {
   markAttendance,
-  getAttendanceByMeetingId
+  getAttendanceByMeetingId,
 };
