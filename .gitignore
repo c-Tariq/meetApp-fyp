@@ -1,2 +1,7 @@
-node_modules/
 .env
+backend/node_modules/
+frontend/node_modules/
+backend/back end docs/
+backend/back end docs/Database TABLES scheme.txt
+backend/.cursorrules
+frontend/.cursorrules
