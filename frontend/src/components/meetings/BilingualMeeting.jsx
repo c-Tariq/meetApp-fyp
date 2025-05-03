@@ -1000,7 +1000,7 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
             </div>
           </aside>
 
-          <main className="col-span-8 p-6 overflow-y-auto bg-white border-r border-blue-200 [&::-webkit-scrollbar]:hidden">
+          <main className="col-span-7 p-6 overflow-y-auto bg-white border-r border-blue-200 [&::-webkit-scrollbar]:hidden">
             <section className="mb-10">
               <SectionHeader title={t.liveTranscription} />
               <ContentBox dir="auto">
@@ -1045,7 +1045,7 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
             </section>
           </main>
 
-          <aside className="col-span-3 p-6 bg-white overflow-y-auto [&::-webkit-scrollbar]:hidden flex flex-col h-full">
+          <aside className="col-span-4 p-6 bg-white overflow-y-auto [&::-webkit-scrollbar]:hidden flex flex-col h-full">
             <section className="mb-10">
               <SectionHeader title={t.topics}>
                 {!showAddTopicInput && (
