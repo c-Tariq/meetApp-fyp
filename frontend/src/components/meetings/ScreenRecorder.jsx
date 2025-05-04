@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ScreenShare, Video, VideoOff, Download, Loader } from 'lucide-react';
+import { useParams } from 'react-router-dom'; // Add this import
+import { ScreenShare, Video, VideoOff, Download, Loader, Upload } from 'lucide-react';
 
 const ActionButton = ({ onClick, disabled, children, className = '', id = null }) => (
     <button
@@ -18,11 +19,14 @@ const StatusDisplay = ({ status }) => (
     </div>
 );
 
-export default function ScreenRecorder() {
+export default function ScreenRecorder() { // Remove props { spaceId, meetingId }
+    const { spaceId, meetingId } = useParams(); // Extract spaceId and meetingId from route params
+
     const [isSelecting, setIsSelecting] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [blobForDownload, setBlobForDownload] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const videoPreviewRef = useRef(null);
     const audioContextRef = useRef(null);
@@ -61,6 +65,7 @@ export default function ScreenRecorder() {
         setIsSelecting(false);
         setIsRecording(false);
         setIsProcessing(false);
+        setIsUploading(false);
     }, []);
 
     useEffect(() => () => resetState(), [resetState]);
@@ -177,6 +182,52 @@ export default function ScreenRecorder() {
         URL.revokeObjectURL(url);
     }, [blobForDownload]);
 
+    const handleUpload = useCallback(async () => {
+        if (!blobForDownload) {
+            console.error("No recording blob available to upload.");
+            return;
+        }
+        if (isUploading) {
+            return; // Prevent double uploads
+        }
+
+        // Validate spaceId and meetingId
+        if (!spaceId || !meetingId) {
+            console.error("Space ID and Meeting ID are required for upload.");
+            alert("Error: Cannot upload without valid Space ID and Meeting ID.");
+            return;
+        }
+
+        setIsUploading(true);
+
+        const formData = new FormData();
+        const webmFile = new File([blobForDownload], `recording-${meetingId}-${Date.now()}.webm`, {
+            type: 'video/webm'
+        });
+        formData.append('recording', webmFile);
+        try {
+            const response = await fetch(`/api/spaces/${spaceId}/meetings/${meetingId}/recording`, {
+                method: 'POST',
+                body: formData,
+              });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error('Upload failed:', result.message || `HTTP error ${response.status}`);
+                alert(`Upload failed: ${result.message || 'Server error'}`);
+            } else {
+                console.log('Upload successful:', result);
+                alert('Recording uploaded and processing started!');
+            }
+        } catch (error) {
+            console.error('Error during upload:', error);
+            alert(`Upload error: ${error.message}`);
+        } finally {
+            setIsUploading(false);
+        }
+    }, [blobForDownload, isUploading, spaceId, meetingId]);
+
     const canSelect = !isSelecting && !isRecording;
     const canRecord = !!finalStreamRef.current && !isRecording && !isSelecting && !isProcessing;
     const canStop = isRecording;
@@ -228,7 +279,7 @@ export default function ScreenRecorder() {
                         />
                     </div>
 
-                    <div className="text-center">
+                    <div className="text-center space-x-4">
                         <ActionButton
                             id="downloadBtn"
                             onClick={handleDownload}
@@ -236,6 +287,15 @@ export default function ScreenRecorder() {
                             className="bg-purple-600 text-white hover:bg-purple-700"
                         >
                             <Download className="h-5 w-5 mr-2" /> Download
+                        </ActionButton>
+                        <ActionButton
+                            id="uploadBtn"
+                            onClick={handleUpload}
+                            disabled={!blobForDownload || isUploading}
+                            className="bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            {isUploading ? <Loader className="animate-spin h-5 w-5 mr-2" /> : <Upload className="h-5 w-5 mr-2" />}
+                            {isUploading ? 'Uploading...' : 'Upload'}
                         </ActionButton>
                     </div>
                 </div>

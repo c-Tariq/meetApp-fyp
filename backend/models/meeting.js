@@ -75,46 +75,53 @@ const updateMeetingSummaryAndTasks = async (meetingId, summary, tasks) => {
     [summary, tasks, meetingId]
   );
   if (result.rows.length === 0) {
-    throw new Error('Meeting not found or update failed');
+    throw new Error("Meeting not found or update failed");
   }
   return result.rows[0]; // Return the updated meeting object
 };
 
 // Function to update just the transcript for a meeting
 const updateMeetingTranscript = async (meetingId, transcript) => {
+  console.log("this is transcription mooooooooooooooooooooooooodel");
+  // console.log(transcript);
   const result = await pool.query(
     "UPDATE meeting SET transcript = $1 WHERE meeting_id = $2 RETURNING meeting_id", // Only need ID back
     [transcript, meetingId]
   );
   if (result.rows.length === 0) {
-    throw new Error('Meeting not found or transcript update failed');
+    throw new Error("Meeting not found or transcript update failed");
   }
-  return result.rows[0]; 
+  return result.rows[0];
 };
 
 // Function to partially update meeting details (e.g., title, scheduled_time)
 const updateMeetingDetails = async (meetingId, updates) => {
   // Filter out undefined values to only update provided fields
   const fieldsToUpdate = Object.entries(updates)
-                               .filter(([key, value]) => value !== undefined)
-                               .reduce((obj, [key, value]) => {
-                                 // Map frontend keys (camelCase) to DB columns (snake_case) if necessary
-                                 const dbKey = key === 'scheduledTime' ? 'scheduled_time' : key;
-                                 obj[dbKey] = value;
-                                 return obj;
-                               }, {});
+    .filter(([key, value]) => value !== undefined)
+    .reduce((obj, [key, value]) => {
+      // Map frontend keys (camelCase) to DB columns (snake_case) if necessary
+      const dbKey = key === "scheduledTime" ? "scheduled_time" : key;
+      obj[dbKey] = value;
+      return obj;
+    }, {});
 
   const keys = Object.keys(fieldsToUpdate);
   if (keys.length === 0) {
     // If no valid fields were provided, fetch and return the current meeting data
-    console.warn("Update meeting details called with no valid fields for meeting:", meetingId);
+    console.warn(
+      "Update meeting details called with no valid fields for meeting:",
+      meetingId
+    );
     return getMeetingById(meetingId);
   }
 
   // Build the SET part of the SQL query dynamically
   // Example: SET title = $2, scheduled_time = $3
-  const setClause = keys.map((key, index) => `"${key}" = $${index + 2}`).join(', ');
-  const values = keys.map(key => fieldsToUpdate[key]);
+  const setClause = keys
+    .map((key, index) => `"${key}" = $${index + 2}`)
+    .join(", ");
+  const values = keys.map((key) => fieldsToUpdate[key]);
 
   const queryText = `UPDATE meeting SET ${setClause} WHERE meeting_id = $1 RETURNING *`;
   const queryValues = [meetingId, ...values];
@@ -122,15 +129,15 @@ const updateMeetingDetails = async (meetingId, updates) => {
   const result = await pool.query(queryText, queryValues);
 
   if (result.rows.length === 0) {
-      throw new Error('Meeting not found or update failed');
+    throw new Error("Meeting not found or update failed");
   }
   return result.rows[0]; // Return the updated meeting object
 };
 
 const deleteMeetingById = async (meetingId) => {
   const result = await pool.query(
-      "DELETE FROM meeting WHERE meeting_id = $1 RETURNING *",
-      [meetingId]
+    "DELETE FROM meeting WHERE meeting_id = $1 RETURNING *",
+    [meetingId]
   );
   // Returns the deleted meeting object or null if not found
   return result.rows[0] || null;
@@ -143,8 +150,8 @@ module.exports = {
   getMeetingsBySpaceId,
   searchMeetingsByName,
   updateMeetingStatus,
-  updateMeetingSummaryAndTasks, 
+  updateMeetingSummaryAndTasks,
   updateMeetingTranscript, // Export the new function
   updateMeetingDetails, // Export the new function
-  deleteMeetingById // Export the new function
+  deleteMeetingById, // Export the new function
 };

@@ -1,5 +1,5 @@
 // OpenAI API connection
-const { OpenAI } = require("openai/index.mjs");
+const { OpenAI } = require("openai/index.js");
 require("dotenv").config();
 
 const openai = new OpenAI({

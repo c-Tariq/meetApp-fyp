@@ -1128,12 +1128,12 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting, isSpaceAdmi
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Link
-              to="/recording"
-              className="text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors border border-blue-300 px-3 py-1 rounded-md hover:bg-blue-100"
-            >
-              Screen Recording
-            </Link>
+          <Link
+            to={`/spaces/${meeting?.space_id}/meetings/${meeting?.meeting_id}/recording`}
+            className="text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors border border-blue-300 px-3 py-1 rounded-md hover:bg-blue-100"
+          >
+            Screen Recording
+          </Link>
             <button
               onClick={() => setLanguage(language === 'EN' ? 'عربي' : 'EN')}
               className="text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors"

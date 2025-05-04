@@ -56,7 +56,7 @@ function App() {
               }
             />
             <Route
-              path="/recording"
+              path="//spaces/:spaceId/meetings/:meetingId/recording"
               element={
                 <PrivateRoute>
                   <div>
