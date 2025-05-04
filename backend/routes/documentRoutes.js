@@ -1,10 +1,37 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true }); // Access :spaceId, :meetingId, :topicId
 const documentController = require('../controllers/documentController');
-const { ensureAuthenticated } = require('../middleware/auth');
-const { checkSpaceMembership } = require('../middleware/checkMembership'); // Import the membership check
-const upload = require('../middleware/upload');
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
+const { checkSpaceMembership } = require('../middleware/authMiddleware');
+// const upload = require('../middleware/upload'); // Import removed
 const { param, validationResult } = require('express-validator'); // Import validators
+
+// Add imports needed for multer setup
+const multer = require('multer');
+const fs = require('fs'); 
+const path = require('path');
+
+// --- Multer Configuration for Document Uploads (Moved from middleware) ---
+const baseUploadDir = path.join(__dirname, '..', 'uploads'); // Base uploads directory path
+const documentDir = path.join(baseUploadDir, 'documents');     // Path for documents
+
+// Ensure the documents upload directory exists
+fs.mkdirSync(documentDir, { recursive: true }); 
+
+const documentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, documentDir); // Save documents to the documents subdirectory
+  },
+  filename: (req, file, cb) => {
+    // Keep the timestamped filename logic
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const storedFileName = uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'); // Replace spaces for safety
+    cb(null, storedFileName);
+  },
+});
+
+const documentUploadMiddleware = multer({ storage: documentStorage }).single('file');
+// --- End Multer Configuration ---
 
 // Validation middleware helper
 const validate = (req, res, next) => {
@@ -22,7 +49,8 @@ const documentIdValidation = [param('documentId', 'Valid Document ID is required
 router.post('/', 
     ensureAuthenticated, 
     checkSpaceMembership, // Check if user is member of the space derived from topicId
-    upload.single('file'), // Multer handles file presence, size, etc.
+    // upload.single('file'), // Use the middleware defined above
+    documentUploadMiddleware, // Use the middleware defined in this file
     documentController.uploadDocument
 ); // POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/documents
 

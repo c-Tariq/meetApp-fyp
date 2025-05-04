@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true }); // Access :spaceId, :meetingId
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
 const attendanceController = require('../controllers/attendanceController');
-const { ensureAuthenticated } = require('../middleware/auth');
-const { checkSpaceMembership } = require('../middleware/checkMembership');
+const { checkSpaceMembership } = require('../middleware/authMiddleware');
 const { param, validationResult } = require('express-validator'); // Import directly
 
 // Validation middleware helper (copied from meetingRoutes.js)

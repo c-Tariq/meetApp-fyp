@@ -1,7 +1,9 @@
 const fs = require("fs").promises; // Use promises for async file operations
+// const fsSync = require("fs"); // No longer needed for sync directory creation
 const path = require("path");
 const os = require("os");
 const ffmpeg = require("fluent-ffmpeg");
+const multer = require("multer"); // Add multer import
 // Import the path to the ffmpeg executable provided by the installer package
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 // Set the path for fluent-ffmpeg
@@ -9,36 +11,75 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 // Removed Supabase import
 // const supabase = require('../config/supabaseClient');
-const transcriptionService = require("../services/transcriptionService");
-const meetingModel = require("../models/meeting");
+const transcriptionController = require("./transcriptionController"); // Import new controller
+const aiModels = require("../models/aiModels"); // Import new AI models
 // Need the OpenAI processing logic - let's reuse parts from meetingController
 // Ideally, refactor OpenAI logic into its own service, but for now, import needed parts
 const {
   isArabic,
   getSystemPrompts,
   callOpenAI,
-} = require("./meetingController"); // Assuming these are exported
+} = require("./aiProcessingController"); // Import from new AI controller
 
-// Helper function for audio extraction
-async function extractAudio(videoBuffer, inputFileName) {
+// --- Directory Setup --- (No longer needed for video disk storage)
+// const baseUploadDir = path.join(__dirname, '..', 'uploads'); 
+// const videoDir = path.join(baseUploadDir, 'videos');     
+// fsSync.mkdirSync(videoDir, { recursive: true }); 
+
+// --- Multer Configuration for Recording Uploads (Using Memory Storage) ---
+const memoryStorage = multer.memoryStorage(); // Use memoryStorage again
+
+// const videoStorage = multer.diskStorage({ ... }); // Remove diskStorage config
+
+const fileFilter = (req, file, cb) => {
+  // Accept specific video/audio types
+  if (
+    file.mimetype === "video/webm" ||
+    file.mimetype === "video/mp4" ||
+    file.mimetype === "audio/webm" || // Allow audio uploads too if needed
+    file.mimetype === "audio/mp4" ||
+    file.mimetype === "audio/mpeg" 
+  ) {
+    cb(null, true); // Accept file
+  } else {
+    console.warn(`Rejected file type: ${file.mimetype}`);
+    cb(
+      new Error("Invalid file type. Only webm, mp4, mp3 video/audio allowed."),
+      false
+    ); // Reject file
+  }
+};
+
+const limits = {
+  fileSize: 500 * 1024 * 1024, // 500 MB limit (adjust as needed)
+};
+
+const recordingUploadMiddleware = multer({
+  storage: memoryStorage, // Use memoryStorage
+  fileFilter: fileFilter,
+  limits: limits,
+}).single("recording");
+// --- End Multer Configuration ---
+
+// Helper function for audio extraction - MODIFIED back to accept buffer
+async function extractAudio(videoBuffer, inputFileName) { 
+  // Write buffer to a temporary file first
   const tempInputPath = path.join(os.tmpdir(), `rec_in_${inputFileName}`);
-  // Output as mp3 for potentially better compatibility/smaller size than wav
-  const outputFileName = `audio_out_${path.parse(inputFileName).name}.mp3`;
+  await fs.writeFile(tempInputPath, videoBuffer);
+  console.log(`Temporarily saved video buffer to: ${tempInputPath}`);
+
+  const outputFileName = `audio_out_${path.parse(inputFileName).name}_${Date.now()}.mp3`;
   const tempOutputPath = path.join(os.tmpdir(), outputFileName);
 
-  console.log(`Temporarily saving video buffer to: ${tempInputPath}`);
-  await fs.writeFile(tempInputPath, videoBuffer);
   console.log(
-    `Video buffer saved. Starting audio extraction to: ${tempOutputPath}`
+    `Starting audio extraction from temp file: ${tempInputPath} to: ${tempOutputPath}`
   );
 
   return new Promise((resolve, reject) => {
-    console.log("this is recording contollllllllllllllllller");
-
-    ffmpeg(tempInputPath)
-      .noVideo() // Extract audio only
-      .audioCodec("libmp3lame") // Specify mp3 codec
-      .audioBitrate("192k") // Set bitrate
+    ffmpeg(tempInputPath) // Use the temporary input path
+      .noVideo() 
+      .audioCodec("libmp3lame") 
+      .audioBitrate("192k") 
       .output(tempOutputPath)
       .on("end", async () => {
         console.log("Audio extraction finished successfully.");
@@ -47,30 +88,26 @@ async function extractAudio(videoBuffer, inputFileName) {
           console.log(
             `Read extracted audio buffer size: ${audioBuffer.length}`
           );
-          // Clean up temporary files after reading
-          await fs.unlink(tempInputPath);
+          // Clean up temporary AUDIO file AND temporary INPUT file
+          await fs.unlink(tempInputPath); 
           await fs.unlink(tempOutputPath);
-          console.log("Temporary files deleted.");
+          console.log("Temporary files deleted:", tempInputPath, tempOutputPath);
           resolve({ audioBuffer, outputFileName });
         } catch (readError) {
           console.error(
-            "Error reading or deleting temp audio files:",
+            "Error reading or deleting temp audio/video files:",
             readError
           );
           reject(
-            new Error("Failed to read extracted audio file after conversion.")
+            new Error("Failed to read/delete temp files after conversion.")
           );
         }
       })
       .on("error", (err) => {
         console.error("Error during ffmpeg processing:", err);
-        // Attempt cleanup even on error
-        fs.unlink(tempInputPath).catch((e) =>
-          console.error("Error deleting temp input on error:", e)
-        );
-        fs.unlink(tempOutputPath).catch((e) =>
-          console.error("Error deleting temp output on error:", e)
-        );
+        // Attempt cleanup of both temp files even on error
+        fs.unlink(tempInputPath).catch(e => console.error("Error deleting temp input on error:", e));
+        fs.unlink(tempOutputPath).catch(e => console.error("Error deleting temp audio output on error:", e));
         reject(new Error(`Audio extraction failed: ${err.message}`));
       })
       .run();
@@ -78,21 +115,20 @@ async function extractAudio(videoBuffer, inputFileName) {
 }
 
 exports.uploadAndProcessRecording = async (req, res) => {
-  console.log("this is recording contollllllllllllllllller");
   const { meetingId } = req.params;
   const userId = req.user?.user_id;
-  const file = req.file; // .webm video file buffer from multer memory storage
+  const file = req.file; // File object from multer (now contains buffer)
 
   // Basic validation
   if (!file) {
     return res.status(400).json({ message: "No recording file uploaded." });
   }
   if (!userId) {
-    // Should be caught by ensureAuthenticated, but double-check
     return res.status(401).json({ message: "User not authenticated." });
   }
-  // Removed Supabase client check
 
+  console.log(`Processing uploaded recording in memory for meeting ${meetingId}`);
+  
   let extractedAudioInfo = null;
   let transcript = null;
   let summary = null;
@@ -102,17 +138,16 @@ exports.uploadAndProcessRecording = async (req, res) => {
   try {
     // 1. Extract Audio from Video Buffer
     console.log(`Extracting audio for meeting ${meetingId}...`);
-    // Use originalname or generate one if needed
-    const inputFileName =
-      file.originalname || `meeting_${meetingId}_${Date.now()}.webm`;
-    extractedAudioInfo = await extractAudio(file.buffer, inputFileName);
+    // Use originalname or generate one if needed for temp file
+    const inputFileName = file.originalname || `meeting_${meetingId}_${Date.now()}.webm`;
+    extractedAudioInfo = await extractAudio(file.buffer, inputFileName); 
     console.log(`Audio extracted for meeting ${meetingId}.`);
 
-    // 2. Transcribe using the service (sends audio buffer)
+    // 2. Transcribe using the controller (sends audio buffer)
     console.log(`Requesting transcription for meeting ${meetingId}...`);
-    transcript = await transcriptionService.getTranscriptFromFileData(
+    transcript = await transcriptionController.getTranscriptFromFileData(
       extractedAudioInfo.audioBuffer,
-      extractedAudioInfo.outputFileName // Send the audio filename
+      extractedAudioInfo.outputFileName // Send the temp audio filename
     );
     console.log(
       `Transcription received for meeting ${meetingId}. Length: ${transcript?.length}`
@@ -121,9 +156,7 @@ exports.uploadAndProcessRecording = async (req, res) => {
     // --- Steps after successful transcription ---
     // 3. Save transcript to DB
     try {
-      console.log(`Updating transcript in DB for meeting ${meetingId}...`);
-      await meetingModel.updateMeetingTranscript(meetingId, transcript);
-      console.log(`Transcript saved successfully for meeting ${meetingId}.`);
+      await aiModels.updateMeetingTranscript(meetingId, transcript);
     } catch (dbError) {
       console.error(
         `Failed to save transcript to DB for meeting ${meetingId}:`,
@@ -152,7 +185,6 @@ exports.uploadAndProcessRecording = async (req, res) => {
           `OpenAI summary generation failed for meeting ${meetingId}:`,
           results[0].reason
         );
-        // Append error
         processingError = processingError
           ? `${processingError} OpenAI summary failed.`
           : "OpenAI summary failed.";
@@ -173,18 +205,11 @@ exports.uploadAndProcessRecording = async (req, res) => {
       // 5. Save Summary and Tasks to DB (only if generated)
       if (summary || tasks) {
         try {
-          console.log(
-            `Updating summary/tasks in DB for meeting ${meetingId}...`
-          );
-          await meetingModel.updateMeetingSummaryAndTasks(
+          await aiModels.updateMeetingSummaryAndTasks(
             meetingId,
             summary,
             tasks
           );
-          console.log(
-            `Summary/tasks saved successfully for meeting ${meetingId}.`
-          );
-          console.log("__________________>>>>>>>>", transcript);
         } catch (dbError) {
           console.error(
             `Failed to save summary/tasks to DB for meeting ${meetingId}:`,
@@ -215,60 +240,45 @@ exports.uploadAndProcessRecording = async (req, res) => {
 
     // 6. Final Response based on errors collected
     if (processingError) {
-      // Partial success: Audio extracted & Transcribed, but subsequent steps failed
-      return res.status(207).json({
-        // 207 Multi-Status
+      return res.status(207).json({ // 207 Multi-Status
         message: `Recording processed with errors: ${processingError}`,
-        transcript: transcript, // Return transcript
-        summary: summary, // Return if generated
-        tasks: tasks, // Return if generated
+        // recordingFile: file.filename, // No longer saving original file
+        transcript: transcript,
+        summary: summary,
+        tasks: tasks,
       });
     } else {
-      // Full success
       return res.status(200).json({
         message:
-          "Recording extracted, transcribed, and processed successfully.",
+          "Recording processed in memory and data saved successfully.", // Updated message
+        // recordingFile: file.filename, // No longer saving original file
         transcriptLength: transcript?.length,
         summaryGenerated: !!summary,
         tasksGenerated: !!tasks,
       });
     }
   } catch (error) {
-    // Catch errors from Audio Extraction or Transcription service
+    // Catch errors from Audio Extraction or Transcription controller
     console.error(
       `Critical error during recording processing for meeting ${meetingId}:`,
       error
     );
-    // Determine status code based on error type if possible
     const statusCode =
       error.message.includes("Audio extraction failed") ||
       error.message.includes("Transcription failed")
         ? 500
         : 500;
+    // Optionally delete the uploaded file if processing fails critically?
+    // await fs.unlink(file.path).catch(e => console.error("Error deleting uploaded file on failure:", e));
     return res.status(statusCode).json({
       message: error.message || "Failed to process recording.",
-      // Avoid sending back potentially large transcript data on critical failure
     });
-  } finally {
-    // Ensure cleanup happens even if initial extraction promise was rejected
-    // (Though the helper function tries to clean up internally too)
-    if (extractedAudioInfo) {
-      const tempInputPath = path.join(
-        os.tmpdir(),
-        `rec_in_${
-          file.originalname || `meeting_${meetingId}_${Date.now()}.webm`
-        }`
-      );
-      const tempOutputPath = path.join(
-        os.tmpdir(),
-        extractedAudioInfo.outputFileName
-      );
-      fs.unlink(tempInputPath).catch((e) =>
-        console.error("Error deleting temp input in finally:", e)
-      );
-      fs.unlink(tempOutputPath).catch((e) =>
-        console.error("Error deleting temp output in finally:", e)
-      );
-    }
-  }
+  } 
+  // Removed complex finally block, extractAudio handles its temp file cleanup
+};
+
+// Export both the controller logic and the configured middleware
+module.exports = {
+    uploadAndProcessRecording: exports.uploadAndProcessRecording,
+    recordingUploadMiddleware // Export the middleware instance
 };

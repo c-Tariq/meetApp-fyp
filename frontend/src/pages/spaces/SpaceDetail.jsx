@@ -80,6 +80,7 @@ export default function SpaceDetail() {
       const response = await axios.post(`/api/spaces/${spaceId}/meetings`, meetingData);
       setMeetings([...meetings, response.data]);
       setIsCreateMeetingModalOpen(false);
+      setSuccess('Meeting created successfully');
     } catch (err) {
       setError('Failed to create meeting');
     }
@@ -106,49 +107,64 @@ export default function SpaceDetail() {
 
   const handleInviteMembers = async (email) => {
     try {
+      // First check if the user exists
       const response = await axios.post(`/api/spaces/${spaceId}/members/invite`, { email });
       setIsInviteMembersModalOpen(false);
-      setSuccess('Invitations sent successfully');
+      setSuccess('Invitation sent successfully');
       setError('');
     } catch (err) {
-      setError('Failed to invite members');
-      setSuccess('');
+      if (err.response && err.response.status === 404) {
+        // User not found, but we can still send an invitation
+        try {
+          // You might need a different endpoint for inviting non-existent users
+          const inviteResponse = await axios.post(`/api/spaces/${spaceId}/members/invite-new`, { email });
+          setIsInviteMembersModalOpen(false);
+          setSuccess('Invitation sent to new user');
+          setError('');
+        } catch (inviteErr) {
+          setError('Failed to invite new user: ' + (inviteErr.response?.data?.message || 'Unknown error'));
+          setSuccess('');
+        }
+      } else {
+        setError('Failed to invite member: ' + (err.response?.data?.message || 'Unknown error'));
+        setSuccess('');
+      }
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="animate-pulse">Loading space...</div>
+      <div className="min-h-screen bg-white p-4">
+        <div className="animate-pulse text-blue-600">Loading space...</div>
       </div>
     );
   }
 
   if (!space) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-white p-4">
         <div className="text-red-600">Space not found</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto py-6 sm:px-8 lg:px-8">
         <div className="px-4 sm:px-0">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">{space.name}</h1>
+            <h1 className="text-2xl font-semibold text-blue-600">{space.name}</h1>
             <div className="flex space-x-4">
               <button
                 onClick={() => setIsInviteMembersModalOpen(true)}
-                className="btn-secondary inline-flex items-center"
+                className="bg-blue-50 border border-blue-600 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md shadow-sm inline-flex items-center transition-colors"
               >
                 <UserPlusIcon className="h-5 w-5 mr-2" />
                 Invite Members
               </button>
               <button
                 onClick={() => setIsCreateMeetingModalOpen(true)}
-                className="btn-primary inline-flex items-center"
+                className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md shadow-sm inline-flex items-center transition-colors"
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
                 New Meeting
@@ -157,20 +173,20 @@ export default function SpaceDetail() {
           </div>
 
           {success && (
-            <div className="rounded-md bg-green-50 p-4 mb-6">
-              <div className="text-sm text-green-700">{success}</div>
+            <div className="rounded-md bg-green-50 p-4 mb-6 border border-green-200">
+              <div className="text-sm text-green-600">{success}</div>
             </div>
           )}
           {error && (
-            <div className="rounded-md bg-red-50 p-4 mb-6">
-              <div className="text-sm text-red-700">{error}</div>
+            <div className="rounded-md bg-red-50 p-4 mb-6 border border-red-200">
+              <div className="text-sm text-red-600">{error}</div>
             </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="card">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Meetings</h2>
+              <div className="bg-blue-50 rounded-lg shadow-sm p-6 border border-blue-100 min-h-[600px] ">
+                <h2 className="text-lg font-medium text-blue-900 mb-4">Meetings</h2>
                 <div className="space-y-4">
                   {meetings.length === 0 ? (
                     <p className="text-gray-500">No meetings scheduled yet.</p>
@@ -183,9 +199,9 @@ export default function SpaceDetail() {
                             to={`/spaces/${spaceId}/meetings/${meeting.meeting_id}`}
                             className="block hover:shadow-md transition-shadow rounded-lg"
                           >
-                            <div className="card hover:border-primary-500 border-2 border-transparent p-4 flex justify-between items-start">
+                            <div className="bg-white p-4 rounded-lg hover:border-blue-600 border-2 border-transparent flex justify-between items-start">
                               <div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-1">
+                                <h3 className="text-lg font-medium text-blue-600 mb-1">
                                   {meeting.title}
                                 </h3>
                                 <div className="text-sm text-gray-500">
@@ -195,10 +211,10 @@ export default function SpaceDetail() {
                               <div className="mt-1 flex-shrink-0 ml-4">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     meeting.status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
-                                    meeting.status === 'Ongoing' || meeting.status === 'In Progress' ? 'bg-green-100 text-green-800' :
+                                    meeting.status === 'Ongoing' || meeting.status === 'In Progress' ? 'bg-green-100 text-green-600' :
                                     meeting.status === 'Completed' ? 'bg-gray-100 text-gray-800' :
-                                    meeting.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                                    'bg-yellow-100 text-yellow-800' // Default/Unknown status
+                                    meeting.status === 'Cancelled' ? 'bg-red-100 text-red-600' :
+                                    'bg-amber-100 text-amber-600' // Default/Unknown status
                                   }`}>
                                   {meeting.status || 'Unknown'}
                                 </span>
@@ -215,7 +231,7 @@ export default function SpaceDetail() {
                                 }}
                                 disabled={deletingMeetingId === meeting.meeting_id}
                                 title="Delete Meeting"
-                                className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 {deletingMeetingId === meeting.meeting_id ? (
                                   <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
@@ -234,23 +250,22 @@ export default function SpaceDetail() {
             </div>
 
             <div>
-              <div className="card">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Members</h2>
+              <div className="bg-blue-50 rounded-lg shadow-sm p-6 border border-blue-100 min-h-[600px]">
+                <h2 className="text-lg font-medium text-blue-900 mb-4">Members</h2>
                 <div className="space-y-4">
                   {members.map((member) => {
                     // Check if this member is the admin of the space
                     const isSpaceAdmin = space && member.user_id === space.admin_user_id;
 
                     return (
-                      <div key={member.user_id} className="flex items-center space-x-3"> {/* Use user_id for key if unique */} 
-                        <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
+                      <div key={member.user_id} className="flex items-center space-x-3"> 
+                        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
                           <UserIcon className="h-5 w-5" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-blue-600">
                             {member.member_name}
-                            {/* Add (Admin) label if the member is the admin */}
-                            {isSpaceAdmin && <span className="ml-1 text-xs text-gray-500 font-normal">(Admin)</span>}
+                            {isSpaceAdmin && <span className="ml-1 text-xs text-teal-600 font-normal">(Admin)</span>}
                           </div>
                           <div className="text-sm text-gray-500">{member.email}</div>
                         </div>

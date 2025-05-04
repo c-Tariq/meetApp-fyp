@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const spaceController = require("../controllers/spaceController");
-const { ensureAuthenticated } = require("../middleware/auth");
+const { ensureAuthenticated } = require("../middleware/authMiddleware");
 const spaceMemberRoutes = require("./spaceMembersRoutes");
 const meetingRoutes = require("./meetingRoutes");
 

@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true }); // Access :spaceId and :meetingId from parents
 const topicsController = require('../controllers/topicsController');
-const { ensureAuthenticated } = require('../middleware/auth');
-const { checkSpaceMembership } = require('../middleware/checkMembership'); // Import the new middleware
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
+const { checkSpaceMembership } = require('../middleware/authMiddleware');
 const { body, param, validationResult } = require('express-validator'); // Import validators
 const commentRoutes = require('./commentRoutes');
 const documentRoutes = require('./documentRoutes');

@@ -68,32 +68,6 @@ const updateMeetingStatus = async (meetingId, newStatus) => {
   return result.rows[0] || null;
 };
 
-// Function to update summary and tasks (follow-ups) for a meeting
-const updateMeetingSummaryAndTasks = async (meetingId, summary, tasks) => {
-  const result = await pool.query(
-    "UPDATE meeting SET summary = $1, follow_ups = $2 WHERE meeting_id = $3 RETURNING *",
-    [summary, tasks, meetingId]
-  );
-  if (result.rows.length === 0) {
-    throw new Error("Meeting not found or update failed");
-  }
-  return result.rows[0]; // Return the updated meeting object
-};
-
-// Function to update just the transcript for a meeting
-const updateMeetingTranscript = async (meetingId, transcript) => {
-  console.log("this is transcription mooooooooooooooooooooooooodel");
-  // console.log(transcript);
-  const result = await pool.query(
-    "UPDATE meeting SET transcript = $1 WHERE meeting_id = $2 RETURNING meeting_id", // Only need ID back
-    [transcript, meetingId]
-  );
-  if (result.rows.length === 0) {
-    throw new Error("Meeting not found or transcript update failed");
-  }
-  return result.rows[0];
-};
-
 // Function to partially update meeting details (e.g., title, scheduled_time)
 const updateMeetingDetails = async (meetingId, updates) => {
   // Filter out undefined values to only update provided fields
@@ -150,8 +124,6 @@ module.exports = {
   getMeetingsBySpaceId,
   searchMeetingsByName,
   updateMeetingStatus,
-  updateMeetingSummaryAndTasks,
-  updateMeetingTranscript, // Export the new function
   updateMeetingDetails, // Export the new function
   deleteMeetingById, // Export the new function
 };

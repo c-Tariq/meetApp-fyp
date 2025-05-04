@@ -3,7 +3,9 @@ const router = express.Router();
 const { body } = require("express-validator");
 const rateLimit = require('express-rate-limit');
 const userController = require('../controllers/userController');
-const { ensureAuthenticated } = require('../middleware/auth');
+const passport = require('../config/passportConfig');
+const { validationResult } = require('express-validator');
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
 
 // Configure login rate limiter
 const loginLimiter = rateLimit({

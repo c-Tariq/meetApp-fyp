@@ -1,7 +1,7 @@
 const express = require('express');
 const commentController = require('../controllers/commentController');
-const { ensureAuthenticated } = require('../middleware/auth');
-const { checkSpaceMembership } = require('../middleware/checkMembership');
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
+const { checkSpaceMembership } = require('../middleware/authMiddleware');
 const { param, body, validationResult } = require('express-validator');
 
 // Validation middleware helper

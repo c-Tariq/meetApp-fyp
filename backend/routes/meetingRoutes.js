@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true }); // Access :spaceId from parent
 const meetingController = require("../controllers/meetingController");
-const recordingController = require("../controllers/recordingController"); // Import new controller
-const { ensureAuthenticated } = require("../middleware/auth");
+// const recordingController = require("../controllers/recordingController"); // No longer used here
+const { ensureAuthenticated } = require("../middleware/authMiddleware");
 const topicRoutes = require("./topicRoutes");
 const attendanceRoutes = require("./attendanceRoutes");
 const commentRoutes = require("./commentRoutes"); // Import comment routes
-const { checkSpaceMembership } = require("../middleware/checkMembership"); // Import membership check
+const { checkSpaceMembership } = require("../middleware/authMiddleware"); // Updated path
 const { param, body, validationResult } = require("express-validator"); // Import validators
-const recordingUpload = require("../middleware/recordingUpload"); // Import multer middleware
+const aiRoutes = require("./aiRoutes"); // Import the new AI routes
 
 // Validation middleware helper
 const validate = (req, res, next) => {
@@ -36,11 +36,6 @@ const updateStatusValidation = [
     "Concluded",
   ]),
 ];
-const transcriptBodyValidation = [
-  body("message", "Transcript text (message) is required in the body")
-    .notEmpty()
-    .isString(),
-];
 
 // Validation for general meeting update (PATCH)
 // Make fields optional and add specific validation
@@ -65,11 +60,6 @@ const updateMeetingDetailsValidation = [
 router.post("/", ensureAuthenticated, meetingController.createMeeting); // POST /spaces/:spaceId/meetings
 router.get("/", ensureAuthenticated, meetingController.getSpaceMeetings); // GET /spaces/:spaceId/meetings
 router.get("/:meetingId", ensureAuthenticated, meetingController.getMeeting); // GET /spaces/:spaceId/meetings/:meetingId
-router.post(
-  "/process-meeting",
-  ensureAuthenticated,
-  meetingController.processTranscript
-);
 
 // Special case: Search meetings (not tied to a specific space)
 router.get("/search", ensureAuthenticated, meetingController.searchMeetings); // GET /spaces/:spaceId/meetings/search
@@ -78,6 +68,7 @@ router.get("/search", ensureAuthenticated, meetingController.searchMeetings); //
 router.use("/:meetingId/topics", topicRoutes); // /spaces/:spaceId/meetings/:meetingId/topics
 router.use("/:meetingId/attendance", attendanceRoutes); // /spaces/:spaceId/meetings/:meetingId/attendance
 router.use("/:meetingId/comments", commentRoutes); // Mount comment routes
+router.use("/:meetingId/ai", aiRoutes); // Mount AI routes
 
 router.patch(
   "/:meetingId/status",
@@ -115,17 +106,6 @@ router.get(
   meetingController.getMeeting
 ); // GET /spaces/:spaceId/meetings/:meetingId
 
-// POST route to process transcript for a specific meeting
-router.post(
-  "/:meetingId/process-transcript",
-  ensureAuthenticated,
-  meetingIdValidation,
-  transcriptBodyValidation, // Validate body has the transcript text
-  validate,
-  checkSpaceMembership, // User must be member of the space containing the meeting
-  meetingController.processTranscript
-); // POST /spaces/:spaceId/meetings/:meetingId/process-transcript
-
 // PUT update meeting status (Admin check is inside controller)
 router.put(
   "/:meetingId/status",
@@ -138,6 +118,7 @@ router.put(
 ); // PUT /spaces/:spaceId/meetings/:meetingId/status
 
 // POST route to upload RECORDING and trigger processing
+/* MOVED to aiRoutes.js
 router.post(
   "/:meetingId/recording",
   ensureAuthenticated,
@@ -147,6 +128,7 @@ router.post(
   recordingUpload.single("recording"), // Use multer middleware for single file named 'recording'
   recordingController.uploadAndProcessRecording // Call the new controller function
 ); // POST /api/spaces/:spaceId/meetings/:meetingId/recording (mounted via spaceRoutes.js
+*/
 
 // PATCH route for general meeting updates (e.g., title, time)
 router.patch(

@@ -11,7 +11,6 @@ import AcceptInvitation from './pages/auth/AcceptInvitation';
 import ScreenRecorder from "./components/meetings/ScreenRecorder";
 
 
-
 function App() {
   return (
     <AuthProvider>

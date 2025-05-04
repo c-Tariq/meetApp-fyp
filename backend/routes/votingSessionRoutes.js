@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true }); // Access :spaceId, :meetingId, :topicId
 const votingSessionController = require('../controllers/votingSessionController');
-const { ensureAuthenticated } = require('../middleware/auth');
-const { checkSpaceMembership } = require('../middleware/checkMembership'); // Import membership check
+const { ensureAuthenticated } = require('../middleware/authMiddleware');
+const { checkSpaceMembership } = require('../middleware/authMiddleware');
 const { param, body, validationResult } = require('express-validator'); // Import validators
 
 // Validation middleware helper

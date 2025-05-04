@@ -889,6 +889,7 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting, isSpaceAdmi
   // This should ideally come from the parent component that fetches meeting/space details
   const isCurrentUserSpaceAdmin = user && meeting && user.id === meeting.admin_user_id; 
 
+  
   // State for attendance data
   const [attendanceList, setAttendanceList] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState(true);

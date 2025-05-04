@@ -77,8 +77,8 @@ exports.downloadDocument = async (req, res) => {
     }
 
     // 2. Construct the full path to the stored file
-    // Assumes 'uploads' directory is relative to the project root (one level up from controllers)
-    const filePath = path.join(__dirname, '..', 'uploads', document.stored_file_name);
+    // Assumes 'uploads/documents' directory is relative to the project root
+    const filePath = path.join(__dirname, '..', 'uploads', 'documents', document.stored_file_name);
 
     // 3. Check if file exists on disk
     if (!fs.existsSync(filePath)) {
@@ -135,7 +135,7 @@ exports.deleteDocument = async (req, res) => {
     }
 
     // 2. Construct the full path to the stored file
-    const filePath = path.join(__dirname, '..', 'uploads', document.stored_file_name);
+    const filePath = path.join(__dirname, '..', 'uploads', 'documents', document.stored_file_name);
 
     // 3. Attempt to delete the file from the filesystem
     try {
