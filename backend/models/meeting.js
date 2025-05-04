@@ -27,7 +27,12 @@ const getMeetingsBySpaceId = async (spaceId) => {
 
 const getMeetingById = async (meetingId) => {
   const result = await pool.query(
-    "SELECT * FROM meeting WHERE meeting_id = $1",
+    `SELECT 
+       m.*, 
+       s.user_id AS admin_user_id -- Get the admin ID from the space table
+     FROM meeting m 
+     JOIN space s ON m.space_id = s.space_id 
+     WHERE m.meeting_id = $1`,
     [meetingId]
   );
   return result.rows[0];

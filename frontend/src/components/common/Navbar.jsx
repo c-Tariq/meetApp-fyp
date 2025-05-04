@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
-import { Bars3Icon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, XMarkIcon, ArrowLeftIcon, UserIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 
 function classNames(...classes) {
@@ -71,7 +71,7 @@ export default function Navbar() {
                     <Menu.Button className="flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
                       <span className="sr-only">Open user menu</span>
                       <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
-                        {user?.username?.charAt(0)}
+                        <UserIcon className="h-5 w-5" />
                       </div>
                     </Menu.Button>
                   </div>
@@ -137,7 +137,7 @@ export default function Navbar() {
               <div className="flex items-center px-4">
                 <div className="flex-shrink-0">
                   <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
-                    {user?.username?.charAt(0)}
+                    <UserIcon className="h-5 w-5" />
                   </div>
                 </div>
                 <div className="ml-3">

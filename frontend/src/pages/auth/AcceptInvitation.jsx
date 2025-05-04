@@ -25,10 +25,10 @@ export default function AcceptInvitation() {
       try {
         const response = await axios.get(`/api/spaces/${spaceId}/members/accept/${token}`);
         
-        setStatus('Success');
+            setStatus('Success');
         setError('');
 
-        setTimeout(() => {
+            setTimeout(() => {
             navigate(`/spaces/${spaceId}`);
         }, 3000);
 
@@ -40,7 +40,7 @@ export default function AcceptInvitation() {
          if (err.response?.status === 401) {
              setStatus('LoginRequired');
          } else if (err.response?.status === 400 || err.response?.status === 403 || err.response?.status === 404) {
-             setStatus('Invalid'); 
+                 setStatus('Invalid'); 
          } else {
              setStatus('Error');
          }

@@ -1,6 +1,7 @@
 const { addDocument, getDocumentsByTopicId, getDocumentById, deleteDocumentById } = require('../models/document');
 const path = require('path');
 const fs = require('fs');
+const { isSpaceAdmin } = require('../models/space');
 
 // Maximum file size allowed: 5MB (in bytes)
 // Moved file size check potentially to multer config or keep here
@@ -111,9 +112,19 @@ exports.downloadDocument = async (req, res) => {
 
 exports.deleteDocument = async (req, res) => {
   // Validation (documentId format) handled by routes
-  // Authorization handled by checkSpaceMembership middleware
+  // Authorization needs space admin check
   try {
-    const { documentId } = req.params;
+    const { spaceId, documentId } = req.params; // Ensure spaceId is available from params
+    const loggedInUserId = req.user.user_id; // Get logged-in user ID
+
+    // --- Authorization Check: Is user the space admin? ---
+    const isAdmin = await isSpaceAdmin(spaceId, loggedInUserId);
+    if (!isAdmin) {
+      return res.status(403).json({ 
+        message: "Forbidden: Only the space administrator can delete documents." 
+      });
+    }
+    // --- End Authorization Check ---
 
     // 1. Get document metadata from DB to find the stored filename
     const document = await getDocumentById(documentId);

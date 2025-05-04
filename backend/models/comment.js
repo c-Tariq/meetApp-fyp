@@ -19,6 +19,19 @@ const getCommentsByTopicId = async (topicId) => {
   return result.rows;
 };
 
+/**
+ * Deletes a comment by its ID.
+ * @param {number} commentId - The ID of the comment to delete.
+ * @returns {Promise<number>} - A promise that resolves to the number of deleted rows (0 or 1).
+ */
+const deleteComment = async (commentId) => {
+  const result = await pool.query(
+    'DELETE FROM comment WHERE comment_id = $1',
+    [commentId]
+  );
+  return result.rowCount; // Returns 0 if not found, 1 if deleted
+};
+
 // Remove getCommentsByMeetingId and createComment as comments are per-topic
 /*
 /**
@@ -84,6 +97,7 @@ const createComment = async (meetingId, userId, commentText) => {
 module.exports = {
   addComment,
   getCommentsByTopicId,
+  deleteComment,
   // getCommentsByMeetingId,
   // createComment,
 };

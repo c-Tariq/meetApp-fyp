@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { PlusIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, UserPlusIcon, TrashIcon, UserIcon } from '@heroicons/react/24/outline';
 import CreateMeetingModal from '../../components/meetings/CreateMeetingModal';
 import InviteMembersModal from '../../components/spaces/InviteMembersModal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,7 +44,28 @@ export default function SpaceDetail() {
         axios.get(`/api/spaces/${spaceId}/members`),
       ]);
       setSpace(spaceRes.data);
-      setMeetings(meetingsRes.data);
+
+      // --- Sort meetings by status ---
+      const statusOrder = {
+        'Scheduled': 1,
+        'Ongoing': 2, // Assuming 'Ongoing' or similar exists
+        'In Progress': 2, // Assuming 'In Progress' or similar exists
+        'Completed': 3,
+        'Cancelled': 4,
+        // Add other statuses here if needed, assigning them a higher number
+      };
+      const sortedMeetings = meetingsRes.data.sort((a, b) => {
+        const orderA = statusOrder[a.status] || 99; // Default to end if status unknown
+        const orderB = statusOrder[b.status] || 99;
+        // Optional: Add secondary sort by date if statuses are the same
+        if (orderA === orderB) {
+            return new Date(a.scheduled_time) - new Date(b.scheduled_time); // Earlier meetings first
+        }
+        return orderA - orderB;
+      });
+      // -----------------------------
+
+      setMeetings(sortedMeetings); // Set the sorted array
       setMembers(membersRes.data);
     } catch (err) {
       setError('Failed to fetch space data');
@@ -162,12 +183,25 @@ export default function SpaceDetail() {
                             to={`/spaces/${spaceId}/meetings/${meeting.meeting_id}`}
                             className="block hover:shadow-md transition-shadow rounded-lg"
                           >
-                            <div className="card hover:border-primary-500 border-2 border-transparent p-4">
-                              <h3 className="text-lg font-medium text-gray-900 mb-1">
-                                {meeting.title}
-                              </h3>
-                              <div className="text-sm text-gray-500">
-                                {new Date(meeting.scheduled_time).toLocaleString()}
+                            <div className="card hover:border-primary-500 border-2 border-transparent p-4 flex justify-between items-start">
+                              <div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-1">
+                                  {meeting.title}
+                                </h3>
+                                <div className="text-sm text-gray-500">
+                                  {new Date(meeting.scheduled_time).toLocaleString()}
+                                </div>
+                              </div>
+                              <div className="mt-1 flex-shrink-0 ml-4">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    meeting.status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
+                                    meeting.status === 'Ongoing' || meeting.status === 'In Progress' ? 'bg-green-100 text-green-800' :
+                                    meeting.status === 'Completed' ? 'bg-gray-100 text-gray-800' :
+                                    meeting.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800' // Default/Unknown status
+                                  }`}>
+                                  {meeting.status || 'Unknown'}
+                                </span>
                               </div>
                             </div>
                           </Link>
@@ -203,19 +237,26 @@ export default function SpaceDetail() {
               <div className="card">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Members</h2>
                 <div className="space-y-4">
-                  {members.map((member) => (
-                    <div key={member.member_id} className="flex items-center space-x-3">
-                      <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
-                        {member.member_name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {member.member_name}
+                  {members.map((member) => {
+                    // Check if this member is the admin of the space
+                    const isSpaceAdmin = space && member.user_id === space.admin_user_id;
+
+                    return (
+                      <div key={member.user_id} className="flex items-center space-x-3"> {/* Use user_id for key if unique */} 
+                        <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
+                          <UserIcon className="h-5 w-5" />
                         </div>
-                        <div className="text-sm text-gray-500">{member.email}</div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {member.member_name}
+                            {/* Add (Admin) label if the member is the admin */}
+                            {isSpaceAdmin && <span className="ml-1 text-xs text-gray-500 font-normal">(Admin)</span>}
+                          </div>
+                          <div className="text-sm text-gray-500">{member.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

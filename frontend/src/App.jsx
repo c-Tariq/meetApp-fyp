@@ -50,7 +50,6 @@ function App() {
               element={
                 <PrivateRoute>
                   <div>
-                    <Navbar />
                     <MeetingDetail />
                   </div>
                 </PrivateRoute>

@@ -107,4 +107,23 @@ router.get('/:pollId/aggregated-results',
     votingSessionController.getAggregatedResults // Call the new controller function
 ); // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/aggregated-results
 
+// DELETE /:pollId - Delete a specific poll
+router.delete('/:pollId', 
+    ensureAuthenticated, 
+    pollIdValidation, // Use existing validation rule
+    validate, 
+    votingSessionController.deletePoll 
+); // DELETE /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId
+
+// DELETE /:pollId/options/:optionId - Delete a specific poll option
+router.delete('/:pollId/options/:optionId', 
+    ensureAuthenticated, 
+    [ // Add validation for both IDs
+        param('pollId', 'Valid Poll ID is required').isInt({ min: 1 }),
+        param('optionId', 'Valid Option ID is required').isInt({ min: 1 })
+    ], 
+    validate, 
+    votingSessionController.deletePollOption 
+); // DELETE /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/options/:optionId
+
 module.exports = router;

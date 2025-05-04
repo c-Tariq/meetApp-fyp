@@ -110,7 +110,6 @@ export default function Spaces() {
                     <h2 className="text-lg font-medium text-gray-900 mb-2">
                       {space.space_name}
                     </h2>
-                    <p className="text-sm text-gray-500">Admin: {space.admin_username}</p>
                   </div>
                 </Link>
                 {isAdmin && (

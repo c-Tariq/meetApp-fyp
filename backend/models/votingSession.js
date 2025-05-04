@@ -119,6 +119,34 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
     return result.rows.map(row => ({ ...row, vote_count: parseInt(row.vote_count, 10) })); 
   };
 
+/**
+ * Deletes a poll and potentially its associated options and votes (if CASCADE is set up).
+ * @param {number} pollId - The ID of the poll to delete.
+ * @returns {Promise<number>} - A promise that resolves to the number of deleted rows (0 or 1).
+ */
+const deletePoll = async (pollId) => {
+    // Assumes ON DELETE CASCADE is set for poll_options and votes referencing poll_id
+    const result = await pool.query(
+        'DELETE FROM polls WHERE poll_id = $1', // Correct table name: polls
+        [pollId]
+    );
+    return result.rowCount;
+};
+
+/**
+ * Deletes a specific poll option.
+ * @param {number} optionId - The ID of the option to delete.
+ * @returns {Promise<number>} - A promise that resolves to the number of deleted rows (0 or 1).
+ */
+const deletePollOption = async (optionId) => {
+    // Assumes ON DELETE CASCADE is set for votes referencing option_id, OR handle votes deletion separately
+    const result = await pool.query(
+        'DELETE FROM poll_options WHERE option_id = $1',
+        [optionId]
+    );
+    return result.rowCount;
+};
+
 module.exports = {
     createPoll,
     getPollById,
@@ -132,5 +160,7 @@ module.exports = {
     castVote,
     getVotesByPollId,
     hasUserVoted,
-    getAggregatedPollResults
+    getAggregatedPollResults,
+    deletePoll,
+    deletePollOption
   };

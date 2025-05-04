@@ -1,4 +1,5 @@
-const { addComment, getCommentsByTopicId, getCommentsByMeetingId, createComment } = require('../models/comment');
+const { addComment, getCommentsByTopicId, getCommentsByMeetingId, createComment, deleteComment } = require('../models/comment');
+const { isSpaceAdmin } = require('../models/space');
 
 exports.addComment = async (req, res) => {
   // Validation handled by express-validator in routes
@@ -70,6 +71,38 @@ exports.addMeetingComment = async (req, res) => {
   }
 };
 */
+
+/**
+ * Deletes a specific comment.
+ * Requires space administrator privileges.
+ */
+exports.deleteComment = async (req, res) => {
+  try {
+    const { spaceId, commentId } = req.params;
+    const loggedInUserId = req.user.user_id;
+
+    // Authorization Check: Is user the space admin?
+    const isAdmin = await isSpaceAdmin(spaceId, loggedInUserId);
+    if (!isAdmin) {
+      return res.status(403).json({ 
+        message: "Forbidden: Only the space administrator can delete comments." 
+      });
+    }
+
+    // Attempt to delete the comment
+    const deletedRowCount = await deleteComment(commentId);
+
+    if (deletedRowCount === 0) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    res.status(204).send(); // Success, No Content
+
+  } catch (err) {
+    console.error('Error in deleteComment controller:', err);
+    res.status(500).json({ message: 'Server Error deleting comment' });
+  }
+};
 
 // Remove unused placeholders
 // exports.getTopicComments = async (req, res) => { /* ... */ };

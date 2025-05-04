@@ -68,6 +68,16 @@ router.post('/',
     commentController.addComment // Use the correct controller for adding topic comments
 );
 
+// DELETE /:commentId (relative to topic) - Delete a specific comment
+router.delete('/:commentId', 
+    ensureAuthenticated, 
+    // No specific validation needed for commentId beyond ensureAuthenticated/admin check
+    // checkSpaceMembership is implicitly covered by admin check in controller
+    [param('commentId', 'Valid Comment ID is required').isInt({ min: 1 })], // Basic validation
+    validate, // Apply validation
+    commentController.deleteComment // Point to the new controller function
+);
+
 // Note: Routes for GET/POST comments for a specific *topic* 
 // should exist within topicRoutes.js (or similar)
 

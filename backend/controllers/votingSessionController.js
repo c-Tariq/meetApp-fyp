@@ -1,4 +1,5 @@
 const pollModel = require('../models/votingSession');
+const { isSpaceAdmin } = require('../models/space'); // Import isSpaceAdmin
 
 exports.createPoll = async (req, res) => {
   // Validation handled by express-validator
@@ -188,5 +189,75 @@ exports.getPollOptions = async (req, res) => {
   } catch (err) {
     console.error('Error fetching poll options:', err);
     res.status(500).json({ message: 'Server Error fetching poll options' }); // Use JSON
+  }
+};
+
+/**
+ * Deletes a specific poll.
+ * Requires space administrator privileges.
+ */
+exports.deletePoll = async (req, res) => {
+  try {
+    // spaceId is needed for auth check, pollId for deletion
+    const { spaceId, pollId } = req.params; 
+    const loggedInUserId = req.user.user_id;
+
+    // Authorization Check: Is user the space admin?
+    const isAdmin = await isSpaceAdmin(spaceId, loggedInUserId);
+    if (!isAdmin) {
+      return res.status(403).json({ 
+        message: "Forbidden: Only the space administrator can delete polls." 
+      });
+    }
+
+    // Attempt to delete the poll using the correct model function
+    const deletedRowCount = await pollModel.deletePoll(pollId);
+
+    if (deletedRowCount === 0) {
+      return res.status(404).json({ message: "Poll not found." });
+    }
+
+    res.status(204).send(); // Success, No Content
+
+  } catch (err) {
+    console.error('Error in deletePoll controller:', err);
+    res.status(500).json({ message: 'Server Error deleting poll' });
+  }
+};
+
+/**
+ * Deletes a specific poll option.
+ * Requires space administrator privileges.
+ */
+exports.deletePollOption = async (req, res) => {
+  try {
+    const { spaceId, optionId } = req.params; // pollId, topicId etc. available if needed for checks
+    const loggedInUserId = req.user.user_id;
+
+    // Authorization Check: Is user the space admin?
+    // Note: We might also want to check if the option belongs to a poll in this space/meeting/topic
+    // For simplicity, only checking admin status for now.
+    const isAdmin = await isSpaceAdmin(spaceId, loggedInUserId);
+    if (!isAdmin) {
+      return res.status(403).json({ 
+        message: "Forbidden: Only the space administrator can delete poll options." 
+      });
+    }
+
+    // TODO: Add check: Can we delete options if votes exist? 
+    // For now, we allow deletion regardless of votes, assuming cascade or manual cleanup.
+
+    // Attempt to delete the poll option
+    const deletedRowCount = await pollModel.deletePollOption(optionId);
+
+    if (deletedRowCount === 0) {
+      return res.status(404).json({ message: "Poll option not found." });
+    }
+
+    res.status(204).send(); // Success, No Content
+
+  } catch (err) {
+    console.error('Error in deletePollOption controller:', err);
+    res.status(500).json({ message: 'Server Error deleting poll option' });
   }
 };

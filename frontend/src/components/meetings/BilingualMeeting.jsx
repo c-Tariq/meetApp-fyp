@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ScreenRecorder from './ScreenRecorder';
-import { Link } from 'react-router-dom';
-import { Edit2, Download, Trash2, Copy, X, Plus, FileText, MessageSquare, Send, ChevronDown, ChevronUp, UploadCloud, Paperclip, CheckSquare, ThumbsUp, Save, Ban } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Edit2, Download, Trash2, Copy, X, Plus, FileText, MessageSquare, Send, ChevronDown, ChevronUp, UploadCloud, Paperclip, CheckSquare, ThumbsUp, Save, Ban, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Utility Components
 const SectionHeader = ({ title, children }) => (
@@ -32,16 +33,37 @@ const IconButton = ({ icon, color = 'gray', onClick, disabled, title }) => (
 );
 
 // --- Poll Option Component ---
-function PollOption({ option, results, totalVotes, userVoteOptionId, pollId, onVote, disabled }) {
+function PollOption({ option, results, totalVotes, userVoteOptionId, pollId, topicId, meetingId, spaceId, onVote, disabled, isSpaceAdmin, onOptionDeleted }) {
   const isSelected = userVoteOptionId === option.option_id;
   const votesForOption = results?.find(r => r.option_id === option.option_id)?.vote_count || 0;
   const percentage = totalVotes > 0 ? ((votesForOption / totalVotes) * 100).toFixed(0) : 0;
+  const [isDeletingOption, setIsDeletingOption] = useState(false);
+
+  const handleDeleteOption = async (e) => {
+      e.stopPropagation(); // Prevent voting when clicking delete
+      e.preventDefault();
+
+      if (!window.confirm(`Are you sure you want to delete the option: "${option.option_text}"? This may affect existing votes.`)) return;
+
+      setIsDeletingOption(true);
+      try {
+          await axios.delete(`/api/spaces/${spaceId}/meetings/${meetingId}/topics/${topicId}/polls/${pollId}/options/${option.option_id}`);
+          if (onOptionDeleted) {
+              onOptionDeleted(option.option_id); // Notify parent (Poll component) to refetch
+          }
+      } catch (err) {
+          console.error("Error deleting poll option:", err);
+          alert(err.response?.data?.message || 'Failed to delete option.'); // Simple alert for now
+          setIsDeletingOption(false); 
+      } 
+  };
 
   return (
+    <div className="relative group">
     <button
       onClick={() => onVote(option.option_id)}
-      disabled={disabled}
-      className={`w-full p-2 text-left text-sm rounded-md border mb-2 transition ${isSelected ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'} disabled:opacity-70 disabled:cursor-not-allowed relative`}
+          disabled={disabled || isDeletingOption}
+          className={`w-full p-2 text-left text-sm rounded-md border mb-2 transition ${isSelected ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'} ${isDeletingOption ? 'opacity-50 cursor-not-allowed' : ''} disabled:opacity-70 disabled:cursor-not-allowed relative pl-6`}
     >
       <div className="flex justify-between items-center z-10 relative">
         <span className={`${isSelected ? 'font-semibold text-blue-800' : 'text-gray-700'}`}>{option.option_text}</span>
@@ -49,7 +71,6 @@ function PollOption({ option, results, totalVotes, userVoteOptionId, pollId, onV
            <span className={`text-xs font-medium ${isSelected ? 'text-blue-700' : 'text-gray-500'}`}>{votesForOption} vote{votesForOption !== 1 ? 's' : ''} ({percentage}%)</span> 
         )}
       </div>
-      {/* Background bar for results */} 
       {results && (
          <div 
             className="absolute top-0 left-0 h-full bg-blue-200 rounded-md transition-all duration-300 ease-out"
@@ -57,12 +78,24 @@ function PollOption({ option, results, totalVotes, userVoteOptionId, pollId, onV
          ></div> 
       )}
     </button>
+
+        {/* Delete Option Button - Absolutely positioned, visible on hover */}
+        <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            <IconButton
+                icon={<X className="w-3 h-3"/>}
+                color="red"
+                onClick={handleDeleteOption}
+                disabled={isDeletingOption}
+                title="Delete Option"
+            />
+        </div> 
+    </div>
   );
 }
 // --- End Poll Option Component ---
 
 // --- Poll Component ---
-function Poll({ poll, meeting, onVoteSuccess }) {
+function Poll({ poll, meeting, onVoteSuccess, isSpaceAdmin, onPollDeleted }) {
   const [options, setOptions] = useState([]);
   const [results, setResults] = useState(null); // null initially, array when loaded
   const [userVoteOptionId, setUserVoteOptionId] = useState(null); // null if not voted, option_id if voted
@@ -146,9 +179,50 @@ function Poll({ poll, meeting, onVoteSuccess }) {
     }
   };
 
+  const [isDeletingPoll, setIsDeletingPoll] = useState(false);
+  const [deletePollError, setDeletePollError] = useState('');
+
+  const handleDeletePoll = async () => {
+      if (!window.confirm(`Are you sure you want to delete the poll: "${poll.question}"? This will delete all options and votes.`)) return;
+      
+      setIsDeletingPoll(true);
+      setDeletePollError('');
+      try {
+          // Use the same apiUrlBase but with DELETE method
+          await axios.delete(`/api/spaces/${meeting.space_id}/meetings/${meeting.meeting_id}/topics/${poll.topic_id}/polls/${poll.poll_id}`);
+          if (onPollDeleted) {
+              onPollDeleted(poll.poll_id); // Notify parent to remove poll from list
+          }
+          // Component might unmount, no need to reset state here if parent removes it
+      } catch (err) {
+          console.error("Error deleting poll:", err);
+          setDeletePollError(err.response?.data?.message || 'Failed to delete poll.');
+          setIsDeletingPoll(false); // Allow retry on error
+      }
+  };
+
+  // Handler to refresh data when an option is deleted
+  const handleOptionDeleted = (deletedOptionId) => {
+      fetchData(); // Refetch all poll data
+  };
+
   return (
-    <div className="mb-4 p-3 border border-gray-200 rounded bg-gray-50">
-      <p className="text-sm font-semibold text-gray-800 mb-2">{poll.question}</p>
+    <div className="mb-4 p-3 border border-gray-200 rounded bg-gray-50 relative group">
+      <p className="text-sm font-semibold text-gray-800 mb-2 pr-6">{poll.question}</p>
+      {/* Delete Poll Button - Always rendered, visible on hover */} 
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <IconButton
+              icon={<Trash2 className="w-3 h-3"/>}
+              color="red"
+              onClick={handleDeletePoll}
+              disabled={isDeletingPoll}
+              title="Delete Poll"
+          />
+      </div>
+      {/* Display delete error */}
+      {deletePollError && (
+          <p className="text-xs text-red-600 mb-2">Error: {deletePollError}</p>
+      )}
       {loading ? (
         <p className="text-xs text-gray-500">Loading options...</p>
       ) : error ? (
@@ -159,12 +233,17 @@ function Poll({ poll, meeting, onVoteSuccess }) {
             <PollOption 
               key={option.option_id}
               option={option}
-              results={results} // Pass results to show percentages
+              results={results}
               totalVotes={totalVotes}
               userVoteOptionId={userVoteOptionId}
               pollId={poll.poll_id}
+              topicId={poll.topic_id}
+              meetingId={meeting.meeting_id}
+              spaceId={meeting.space_id}
               onVote={handleVote}
-              disabled={hasVoted || isVoting}
+              disabled={hasVoted || isVoting || isDeletingPoll}
+              isSpaceAdmin={isSpaceAdmin}
+              onOptionDeleted={handleOptionDeleted}
             />
           ))}
           {/* --- Add Option Form --- */}
@@ -207,7 +286,7 @@ function Poll({ poll, meeting, onVoteSuccess }) {
 // --- End Poll Component ---
 
 // --- Topic Item Component ---
-function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted, formatCommentTimestamp }) {
+function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted, formatCommentTimestamp, isSpaceAdmin }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -240,6 +319,10 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
   // State for deleting documents
   const [deletingDocId, setDeletingDocId] = useState(null); // Track which doc is being deleted
   const [deleteDocError, setDeleteDocError] = useState('');
+
+  // State for deleting comments
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
+  const [deleteCommentError, setDeleteCommentError] = useState('');
 
   const fetchDocuments = async () => {
     if (!meeting?.space_id || !meeting?.meeting_id || !topic?.topic_id) return;
@@ -321,6 +404,7 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
     try {
       const response = await axios.get(`/api/spaces/${meeting.space_id}/meetings/${meeting.meeting_id}/topics/${topic.topic_id}/comments`);
       setTopicComments(response.data);
+      setDeleteCommentError(''); // Clear delete error on refresh
     } catch (err) {
       console.error("Error fetching topic comments:", err);
       setTopicCommentsError('Failed to load comments for this topic.');
@@ -487,6 +571,29 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
       }
   };
 
+  const handleDeleteComment = async (commentId) => {
+      if (!window.confirm("Are you sure you want to delete this comment?")) return;
+      
+      setDeletingCommentId(commentId);
+      setDeleteCommentError('');
+      try {
+          await axios.delete(`/api/spaces/${meeting.space_id}/meetings/${meeting.meeting_id}/topics/${topic.topic_id}/comments/${commentId}`);
+          // Refresh comments list optimistically or after success
+          setTopicComments(currentComments => currentComments.filter(c => c.comment_id !== commentId));
+      } catch (err) {
+          console.error("Error deleting comment:", err);
+          setDeleteCommentError(err.response?.data?.message || 'Failed to delete comment.');
+          // Optionally refetch comments if optimistic update fails or is not preferred
+          // fetchTopicComments(); 
+      } finally {
+          setDeletingCommentId(null);
+      }
+  };
+
+  const handlePollDeleted = (deletedPollId) => {
+      setPolls(currentPolls => currentPolls.filter(p => p.poll_id !== deletedPollId));
+  };
+
   return (
     <div className="border border-blue-200 rounded-lg overflow-hidden shadow-sm mb-4 bg-white">
       <div 
@@ -537,9 +644,12 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
       
       {/* Expanded content (only show if not editing) */} 
       {isExpanded && !isEditing && (
-        <div className="p-4 border-t border-blue-200">
-          {/* --- Documents Section --- */}
+        <div className="p-4 border-t border-blue-200 space-y-4">
+          
+          {/* --- Documents Section Wrapper --- */}
+          <div className="p-3 border-2 border-gray-200 rounded-lg bg-white shadow-sm">
           <h4 className="text-sm font-medium text-blue-800 mb-3">{t.documents}</h4>
+            {/* Document List */} 
           <div className="mb-4 space-y-2">
             {docsLoading ? (
               <p className="text-xs text-gray-500">Loading documents...</p>
@@ -581,14 +691,13 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
               ))
             )}
           </div>
-          {/* Display delete error if any */} 
+            {/* Delete Error */} 
           {deleteDocError && (
               <p className="text-xs text-red-600 mt-1">Error deleting document: {deleteDocError}</p>
           )}
-          
-          {/* Upload Form */} 
-          <div className="mt-4 pt-3 border-t border-gray-200">
-            <label htmlFor={`file-input-${topic.topic_id}`} className="text-xs font-medium text-blue-800 block mb-2">{t.upload} Document</label>
+            {/* Upload Form - No border-t needed now */} 
+            <div className="mt-4 pt-3 border-gray-200"> 
+              {/* Input and Button container */}
             <div className="flex items-center gap-2">
               <input 
                 type="file" 
@@ -613,10 +722,12 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
             {uploadError && (
               <p className="text-xs text-red-600 mt-1">{uploadError}</p>
             )}
+            </div>
           </div>
           
-          {/* --- Voting Section (Dynamic) --- */}
-          <div className="mt-4 pt-3 border-t border-gray-200">
+          {/* --- Voting Section Wrapper --- */}
+          <div className="p-3 border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+            <div> 
             <div className="flex justify-between items-center mb-3">
                 <h4 className="text-sm font-medium text-blue-800">{t.voting}</h4>
                 {!showCreatePoll && (
@@ -629,7 +740,6 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
                      </button> 
                 )}
             </div>
-            
             {/* Create Poll Form */} 
             {showCreatePoll && (
                 <form onSubmit={handleCreatePoll} className="mb-4 p-3 border border-blue-200 rounded bg-blue-50">
@@ -675,14 +785,27 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
                 <p className="text-xs text-gray-500">No polls created for this topic yet.</p>
             ) : (
                 polls.map(poll => (
-                    <Poll key={poll.poll_id} poll={poll} meeting={meeting} onVoteSuccess={fetchPolls} />
+                      <Poll 
+                          key={poll.poll_id} 
+                          poll={poll} 
+                          meeting={meeting} 
+                          onVoteSuccess={fetchPolls} 
+                          isSpaceAdmin={isSpaceAdmin}
+                          onPollDeleted={handlePollDeleted}
+                      />
                 ))
             )}
+            </div>
           </div>
           
-          {/* --- Comments Section (Per Topic) --- */} 
-          <div className="mt-4 pt-3 border-t border-gray-200">
+          {/* --- Comments Section Wrapper --- */}
+          <div className="p-3 border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+            <div> 
             <h4 className="text-sm font-medium text-blue-800 mb-3">Comments</h4>
+              {/* Display delete error */} 
+              {deleteCommentError && (
+                  <p className="text-xs text-red-600 mb-2">Error: {deleteCommentError}</p>
+              )}
             <div className="mb-4 space-y-2 max-h-[200px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-blue-50 [&::-webkit-scrollbar-thumb]:bg-blue-200">
               {topicCommentsLoading ? (
                 <p className="text-xs text-gray-500">Loading comments...</p>
@@ -692,15 +815,26 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
                 <p className="text-xs text-gray-500">No comments for this topic yet.</p>
               ) : (
                 topicComments.map((comment) => (
-                  <div key={comment.comment_id} className="bg-gray-50 p-2 rounded border border-gray-200">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-semibold text-gray-700">
+                    <div key={comment.comment_id} className="bg-gray-50 p-2 rounded border border-gray-200 group relative">
+                      <div className="flex justify-between items-start mb-1">
+                        <div>
+                          <span className="text-xs font-semibold text-gray-700 block">
                         {comment.username || 'Unknown User'}
                       </span>
                       <span className="text-xs text-gray-400">
-                         {/* Use parent's formatCommentTimestamp or create local one */} 
-                         {formatCommentTimestamp(comment.created_at)} {/* Now uses prop */} 
+                             {formatCommentTimestamp(comment.created_at)}
                       </span>
+                        </div>
+                        {/* Delete Button - Always rendered, visible on hover */} 
+                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <IconButton
+                                icon={<Trash2 className="w-3 h-3"/>}
+                                color="red"
+                                onClick={() => handleDeleteComment(comment.comment_id)}
+                                disabled={deletingCommentId === comment.comment_id}
+                                title="Delete Comment"
+                            />
+                        </div> 
                     </div>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap">
                       {comment.content} 
@@ -737,6 +871,8 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
               </div>
             </form>
           </div> 
+          </div> 
+
         </div>
       )}
     </div>
@@ -744,8 +880,14 @@ function TopicItem({ topic, language, t, meeting, onTopicUpdated, onTopicDeleted
 }
 // --- End Topic Item Component ---
 
-export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
+export default function BilingualMeeting({ meeting, onUpdateMeeting, isSpaceAdmin }) {
   const [language, setLanguage] = useState('EN');
+  const { user } = useAuth(); // Get user from context if not passed as prop
+  const navigate = useNavigate(); // Add useNavigate hook
+  
+  // Determine if the current user is the space admin
+  // This should ideally come from the parent component that fetches meeting/space details
+  const isCurrentUserSpaceAdmin = user && meeting && user.id === meeting.admin_user_id; 
 
   // State for attendance data
   const [attendanceList, setAttendanceList] = useState([]);
@@ -904,6 +1046,43 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
     }
   };
 
+  // Rename and modify handler to mark attendance for any user (if admin)
+  const handleMarkAttendance = async (targetUserId, newStatus) => {
+      if (!meeting?.meeting_id || !meeting?.space_id || targetUserId === undefined) return;
+
+      // Find target user in the list to update state optimistically
+      const userIndex = attendanceList.findIndex(a => a.user_id === targetUserId);
+      if (userIndex === -1) return; // Target user not found in list
+
+      const previousStatus = attendanceList[userIndex].is_present;
+      
+      // Optimistic UI update
+      setAttendanceList(currentList => 
+          currentList.map((item, index) => 
+              index === userIndex ? { ...item, is_present: newStatus } : item
+          )
+      );
+      setAttendanceError(''); // Clear previous errors
+      
+      try {
+          // Send targetUserId in the request body
+          await axios.post(`/api/spaces/${meeting.space_id}/meetings/${meeting.meeting_id}/attendance`, { 
+              isPresent: newStatus,
+              targetUserId: targetUserId 
+          });
+          // Success - optimistic update stands
+      } catch (err) {
+          console.error("Error marking attendance:", err);
+          setAttendanceError(err.response?.data?.message || 'Failed to update attendance.');
+          // Revert optimistic update on error
+          setAttendanceList(currentList => 
+              currentList.map((item, index) => 
+                  index === userIndex ? { ...item, is_present: previousStatus } : item
+              )
+          );
+    }
+  };
+
   // KEEP formatCommentTimestamp as it might be useful for topic comments
   const formatCommentTimestamp = (dateString) => {
     if (!dateString) return '';
@@ -930,18 +1109,27 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-blue-50" dir={language === 'عربي' ? 'rtl' : 'ltr'}>
       <div className="w-full h-screen rounded-2xl overflow-hidden shadow-2xl border border-blue-200">
         <div className="p-6 bg-white flex items-center justify-between border-b border-blue-200 shadow-sm flex-wrap gap-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <h1 className="text-xl font-bold text-blue-900">{meeting?.title || 'Meeting Title'}</h1>
-            {meeting?.status && (
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                {meeting.status}
-              </span>
-            )}
-            <span className="text-sm text-blue-700">{formatDate(meeting?.scheduled_time)}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              title="Go Back"
+              className="p-2 rounded text-blue-700 hover:bg-gray-100 hover:text-blue-900 transition"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <h1 className="text-xl font-bold text-blue-900">{meeting?.title || 'Meeting Title'}</h1>
+              {meeting?.status && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                  {meeting.status}
+                </span>
+              )}
+              <span className="text-sm text-blue-700">{formatDate(meeting?.scheduled_time)}</span>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            <Link 
-              to="/recording" 
+            <Link
+              to="/recording"
               className="text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors border border-blue-300 px-3 py-1 rounded-md hover:bg-blue-100"
             >
               Screen Recording
@@ -956,24 +1144,6 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
         </div>
 
         <div className="grid grid-cols-12 h-[calc(100vh-96px)]">
-          {/* Remove ScreenRecorder rendering from here */}
-          {/* 
-          <div className="col-span-12 p-4 bg-blue-50 border-b border-blue-200">
-            <ScreenRecorder
-              userId={meeting?.userId || 'default'} // TODO: Ensure correct user ID is passed
-              meetingId={meeting?.meeting_id?.toString() || 'unknown'}
-              onUploadComplete={(result) => {
-                // Example: Update meeting data if recording URL is generated
-                if (result?.url && meeting?.meeting_id) {
-                  // Call a function passed down via props to update the parent state/DB
-                  // onUpdateMeeting({ recording_url: result.url }); 
-                  console.log("Screen recording upload complete:", result);
-                  // Potentially update meeting state here or call prop
-                }
-              }}
-            />
-          </div>
-          */}
           <aside className="col-span-1 p-6 bg-blue-80 border-r border-blue-200 overflow-y-auto [&::-webkit-scrollbar]:hidden">
             <h2 className="font-semibold text-blue-800 mb-5">{t.attendance}</h2>
             <div className="space-y-4">
@@ -982,20 +1152,32 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
               ) : attendanceError ? (
                 <p className="text-sm text-red-600">{attendanceError}</p>
               ) : attendanceList.length === 0 ? (
-                <p className="text-sm text-gray-500">No attendance data.</p>
+                <p className="text-sm text-gray-500">No members found in this space.</p>
               ) : (
-                attendanceList.map((attendee) => (
-                  // Use attendee.user_id or another unique ID if available
-                  <div key={attendee.user_id || attendee.username} className="flex items-center justify-between text-sm">
+                attendanceList.map((attendee) => {
+                  const isPresent = attendee.is_present === true;
+                  const statusColor = isPresent ? 'bg-emerald-500' : 'bg-gray-300';
+                  const statusTitle = isPresent ? 'Present' : 'Absent';
+                  
+                  return (
+                    <div key={attendee.user_id} className="flex items-center justify-between text-sm">
                     <span className="text-slate-800 font-medium">{attendee.username}</span>
                     <div className="flex items-center gap-2">
-                      <div 
-                        className={`w-3 h-3 rounded-full ${attendee.is_present ? 'bg-emerald-500' : 'bg-gray-300'}`}
-                        title={attendee.is_present ? 'Present' : 'Absent'}
-                      ></div>
+                        {/* Dot is clickable only FOR ADMINS */}
+                        <button 
+                          type="button"
+                          onClick={isCurrentUserSpaceAdmin ? () => handleMarkAttendance(attendee.user_id, !isPresent) : undefined} 
+                          disabled={!isCurrentUserSpaceAdmin} // Disable button if not admin
+                          className={`w-3 h-3 rounded-full transition-opacity ${statusColor} ${isCurrentUserSpaceAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+                          title={isCurrentUserSpaceAdmin ? `Click to mark ${attendee.username} as ${isPresent ? 'Absent' : 'Present'}` : statusTitle}
+                          aria-label={isCurrentUserSpaceAdmin ? `Mark ${attendee.username} as ${isPresent ? 'absent' : 'present'}` : statusTitle} 
+                        >
+                          {/* Button is the dot */}
+                        </button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </aside>
@@ -1046,7 +1228,7 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
           </main>
 
           <aside className="col-span-4 p-6 bg-white overflow-y-auto [&::-webkit-scrollbar]:hidden flex flex-col h-full">
-            <section className="mb-10">
+            <section className="mb-10 flex flex-col flex-grow">
               <SectionHeader title={t.topics}>
                 {!showAddTopicInput && (
                   <button 
@@ -1091,8 +1273,8 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
                   <p className="text-xs text-red-600 mb-2">Error: {topicsError}</p>
               )}
 
-              {/* Topics List */} 
-              <div className="p-4 border border-blue-100 rounded-xl shadow-sm space-y-1 bg-gray-50 max-h-[300px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-blue-100 [&::-webkit-scrollbar-thumb]:bg-blue-300">
+              {/* Topics List Container - Remove border classes */}
+              <div className="p-4 rounded-xl shadow-sm space-y-1 bg-white overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-blue-100 [&::-webkit-scrollbar-thumb]:bg-blue-300 flex-grow">
                 {topicsLoading ? (
                   <p className="text-sm text-gray-500">Loading topics...</p>
                 ) : topics.length === 0 ? (
@@ -1107,7 +1289,8 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting }) {
                         meeting={meeting} 
                         onTopicUpdated={fetchTopics} 
                         onTopicDeleted={fetchTopics} 
-                        formatCommentTimestamp={formatCommentTimestamp} // Pass formatter down
+                        formatCommentTimestamp={formatCommentTimestamp}
+                        isSpaceAdmin={isCurrentUserSpaceAdmin}
                     /> 
                   ))
                 )}

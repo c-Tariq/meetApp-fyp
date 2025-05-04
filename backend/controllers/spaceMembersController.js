@@ -88,12 +88,12 @@ exports.inviteToSpace = async (req, res) => {
     // --- End Check ---
 
     // Check if user is already a member (Now we know existingUser is valid)
-    const isMember = await isUserMemberOfSpace(spaceId, existingUser.user_id);
-    if (isMember) {
-      return res
-        .status(400)
-        .json({ message: "User is already a member of this space" });
-    }
+      const isMember = await isUserMemberOfSpace(spaceId, existingUser.user_id);
+      if (isMember) {
+        return res
+          .status(400)
+          .json({ message: "User is already a member of this space" });
+      }
     
     // Generate unique token
     const token = Invitation.generateToken();
@@ -135,60 +135,56 @@ exports.inviteToSpace = async (req, res) => {
 exports.acceptInvitation = async (req, res) => {
   try {
     const { token } = req.params;
-    // We NEED to know who is clicking the link
+
+    // 1. Check Authentication
     if (!req.isAuthenticated()) {
-        // Option 1: Redirect to login, maybe passing the token along
-        // return res.redirect(`/login?invite_token=${token}`); 
-        // Option 2: Return error asking user to log in
-        return res.status(401).json({ message: "Please log in to accept the invitation." });
+      // Return error asking user to log in (suitable for API)
+      return res.status(401).json({ message: "Please log in or register to accept the invitation." });
     }
     const loggedInUserId = req.user.user_id;
+    const loggedInUserEmail = req.user.email; // Assume email is available on req.user
 
-    // Validate token
-    const invitation = await Invitation.getInvitationByToken(token);
+    // 2. Validate Token and Invitation Status
+    const invitation = await Invitation.getInvitationByToken(token); // Assumes this returns null/undefined if not found, expired, or already used
+
     if (!invitation) {
-      return res.status(400).json({ message: "Invalid or expired invitation token." });
+      // Handles not found, expired, or already used based on model logic
+      return res.status(404).json({ message: "This invitation link is invalid or has expired." });
     }
 
-    // Check if invited email matches the logged-in user's email (or ID)
-    // Fetch logged-in user details IF needed for email comparison 
-    // (Assuming req.user contains email or we fetch it based on loggedInUserId)
-    // Simplified check: Let's assume the invited email MUST match the account trying to accept.
-    if (invitation.email !== req.user.email) { // Assuming req.user has email
-        return res.status(403).json({ message: "This invitation is for a different email address." });
+    // Optional: More specific check if model can differentiate states
+    // if (invitation.status === 'accepted') return res.status(409).json({ message: "Invitation already accepted." });
+    // if (invitation.status === 'expired') return res.status(410).json({ message: "Invitation has expired." });
+
+    // 3. Check Email Match
+    if (invitation.email !== loggedInUserEmail) {
+      return res.status(403).json({ message: "This invitation is intended for a different email address." });
     }
 
-    // Check if the user identified by the token/email actually exists 
-    // (This check is technically redundant if we trust req.user based on email match above)
-    let user = await getUserByEmail(invitation.email);
-    if (!user || user.user_id !== loggedInUserId) { 
-        // Safety check: User doesn't exist OR ID mismatch despite email match (shouldn't happen)
-        console.error(`User ID mismatch for email ${invitation.email}: logged in ${loggedInUserId}, found ${user?.user_id}`);
-        return res.status(400).json({ message: "Invitation user mismatch." });
-    }
-
-    // --- Add Check: Is the user already a member? ---
+    // 4. Check if Already Member
     const alreadyMember = await isUserMemberOfSpace(invitation.space_id, loggedInUserId);
     if (alreadyMember) {
-        // Optionally mark token used even if already member
-        await Invitation.markInvitationUsed(token);
-        return res.status(400).json({ message: "You are already a member of this space." });
+      // Mark token used even if already member to prevent reuse/clutter
+      await Invitation.markInvitationUsed(token);
+      // Use 409 Conflict as it's more semantic
+      return res.status(409).json({ message: "You are already a member of this space." });
     }
-    // --- End Check ---
 
-    // Add to space
-    await addUserToSpace(invitation.space_id, loggedInUserId); // Use loggedInUserId
+    // 5. Add User to Space
+    await addUserToSpace(invitation.space_id, loggedInUserId);
 
-    // Mark invitation as used
+    // 6. Mark Invitation as Used (Redundant if already done above, but safe)
     await Invitation.markInvitationUsed(token);
 
-    // Redirect to the space page after successful join
-    // res.redirect(`/spaces/${invitation.space_id}`); 
-    // OR Send success message
-    res.json({ message: "Successfully joined the space!" });
+    // 7. Send Success Response with spaceId for redirection
+    res.status(200).json({
+      message: "Successfully joined the space!",
+      spaceId: invitation.space_id // Include spaceId for frontend redirection
+    });
 
   } catch (err) {
-    console.error("Error accepting invitation:", err);
-    res.status(500).json({ message: "An unexpected error occurred while accepting the invitation." }); // Send specific JSON error
+    // Log the specific error for debugging
+    console.error(`Error accepting invitation for token ${req.params.token}:`, err);
+    res.status(500).json({ message: "An unexpected error occurred while accepting the invitation." });
   }
 };
