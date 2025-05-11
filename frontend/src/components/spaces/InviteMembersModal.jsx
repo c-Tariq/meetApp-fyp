@@ -15,7 +15,7 @@ export default function InviteMembersModal({ isOpen, onClose, onSubmit }) {
   };
 
   return (
-    <Transition.Root show={isOpen} as={Fragment}>
+    <Transition.Root show={isOpen} as={Fragment}> 
       <Dialog as="div" className="relative z-10" onClose={onClose}>
         <Transition.Child
           as={Fragment}
@@ -70,9 +70,10 @@ export default function InviteMembersModal({ isOpen, onClose, onSubmit }) {
                           rows={4}
                           required
                           className="mt-2 input-field"
-                          placeholder="john@example.com, jane@example.com"
+                          placeholder="mohammed@example.com, khaled@example.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
+                          
                         />
                       </div>
                       <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">

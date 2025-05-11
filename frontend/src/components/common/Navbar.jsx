@@ -26,7 +26,7 @@ export default function Navbar() {
   const showBackButton = location.pathname !== '/';
 
   return (
-    <Disclosure as="nav" className="bg-white shadow">
+    <Disclosure as="nav" className="bg-blue-50 shadow">
       {({ open }) => (
         <>
           <div className="mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,7 +36,7 @@ export default function Navbar() {
                    <div className="flex items-center mr-4">
                        <button
                            onClick={() => navigate(-1)}
-                           className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+                           className="inline-flex items-center justify-center rounded-md p-2 text-blue-500 hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
                            aria-label="Go back"
                        >
                            <ArrowLeftIcon className="block h-6 w-6" aria-hidden="true" />
@@ -44,8 +44,8 @@ export default function Navbar() {
                    </div>
                 )}
                 <div className="flex flex-shrink-0 items-center">
-                  <Link to="/" className="text-xl font-bold text-primary-600">
-                    Meeting Spaces
+                  <Link to="/" className="text-xl font-bold text-blue-900">
+                    MeetApp
                   </Link>
                 </div>
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -55,8 +55,8 @@ export default function Navbar() {
                       to={item.href}
                       className={classNames(
                         item.current
-                          ? 'border-primary-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                          ? 'border-blue-600 text-blue-700'
+                          : 'border-transparent text-blue-500 hover:border-blue-400 hover:text-blue-600',
                         'inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium'
                       )}
                     >
@@ -68,9 +68,9 @@ export default function Navbar() {
               <div className="hidden sm:ml-6 sm:flex sm:items-center">
                 <Menu as="div" className="relative ml-3">
                   <div>
-                    <Menu.Button className="flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                    <Menu.Button className="flex rounded-full bg-blue-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                       <span className="sr-only">Open user menu</span>
-                      <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
+                      <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
                         <UserIcon className="h-5 w-5" />
                       </div>
                     </Menu.Button>
@@ -85,6 +85,11 @@ export default function Navbar() {
                     leaveTo="transform opacity-0 scale-95"
                   >
                     <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                      {/* Add user info panel here */}
+                      <div className="px-4 py-2 border-b border-gray-200">
+                        <div className="text-sm font-medium text-gray-800">{user?.username || 'User'}</div>
+                        <div className="text-sm font-medium text-gray-500">{user?.email || 'No email available'}</div>
+                      </div>
                       <Menu.Item>
                         {({ active }) => (
                           <button
@@ -103,7 +108,7 @@ export default function Navbar() {
                 </Menu>
               </div>
               <div className="-mr-2 flex items-center sm:hidden">
-                <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500">
+                <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 text-blue-500 hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
                   <span className="sr-only">Open main menu</span>
                   {open ? (
                     <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
@@ -124,8 +129,8 @@ export default function Navbar() {
                   to={item.href}
                   className={classNames(
                     item.current
-                      ? 'bg-primary-50 border-primary-500 text-primary-700'
-                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700',
+                      ? 'bg-blue-100 border-blue-600 text-blue-700'
+                      : 'border-transparent text-blue-500 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600',
                     'block border-l-4 py-2 pl-3 pr-4 text-base font-medium'
                   )}
                 >
@@ -133,23 +138,23 @@ export default function Navbar() {
                 </Disclosure.Button>
               ))}
             </div>
-            <div className="border-t border-gray-200 pb-3 pt-4">
+            <div className="border-t border-blue-100 pb-3 pt-4">
               <div className="flex items-center px-4">
                 <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
+                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
                     <UserIcon className="h-5 w-5" />
                   </div>
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800">{user?.username}</div>
-                  <div className="text-sm font-medium text-gray-500">{user?.email}</div>
+                  <div className="text-base font-medium text-blue-700">{user?.username || 'User'}</div>
+                  <div className="text-sm font-medium text-blue-500">{user?.email || 'No email available'}</div>
                 </div>
               </div>
               <div className="mt-3 space-y-1">
                 <Disclosure.Button
                   as="button"
                   onClick={logout}
-                  className="block w-full px-4 py-2 text-left text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                  className="block w-full px-4 py-2 text-left text-base font-medium text-blue-500 hover:bg-blue-100 hover:text-blue-700"
                 >
                   Sign out
                 </Disclosure.Button>

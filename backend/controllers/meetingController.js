@@ -156,19 +156,20 @@ async function callOpenAI(systemPrompt, userContent) {
 // Controller function to process transcript for a specific meeting
 exports.processTranscript = async function (req, res) {
   // Validation (meetingId format) handled by express-validator in routes
-  // Authorization (space membership) handled by checkSpaceMembership middleware
   try {
     const { meetingId } = req.params; // Get meetingId from route params
     const transcriptText = req.body.message; // Still assume transcript comes from body for now
-    
+
     if (!transcriptText) {
-      return res.status(400).json({ message: "Transcript text (message) is required in the body" });
+      return res
+        .status(400)
+        .json({ message: "Transcript text (message) is required in the body" });
     }
 
     // Ensure the meeting exists (redundant check if checkSpaceMembership derives spaceId via meeting, but good practice)
     const meeting = await getMeetingById(meetingId);
     if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found.' });
+      return res.status(404).json({ message: "Meeting not found." });
     }
 
     // Perform OpenAI processing
@@ -181,25 +182,31 @@ exports.processTranscript = async function (req, res) {
     ]);
 
     // Update the meeting record in the database
-    const updatedMeeting = await updateMeetingSummaryAndTasks(meetingId, summary, tasks);
+    const updatedMeeting = await updateMeetingSummaryAndTasks(
+      meetingId,
+      summary,
+      tasks
+    );
 
     // Return the results and/or updated meeting
     res.json({
       message: "Transcript processed and meeting updated successfully.",
       summary: summary, // Echo back the generated summary
-      tasks: tasks,     // Echo back the generated tasks
-      updatedMeeting: updatedMeeting // Return the updated meeting object
+      tasks: tasks, // Echo back the generated tasks
+      updatedMeeting: updatedMeeting, // Return the updated meeting object
     });
-
   } catch (error) {
     console.error("Error processing transcript or updating meeting:", error);
-    if (error.response) { // Check for OpenAI specific errors
+    if (error.response) {
+      // Check for OpenAI specific errors
       console.error("OpenAI Error Response Data:", error.response.data);
       console.error("OpenAI Error Response Status:", error.response.status);
-      return res.status(500).json({ message: "Error communicating with AI service." });
-    } else if (error.message === 'Meeting not found or update failed') {
-        return res.status(404).json({ message: error.message });
-    } 
+      return res
+        .status(500)
+        .json({ message: "Error communicating with AI service." });
+    } else if (error.message === "Meeting not found or update failed") {
+      return res.status(404).json({ message: error.message });
+    }
     // Generic server error
     res.status(500).json({ message: "Server error processing transcript" });
   }
@@ -250,7 +257,7 @@ exports.updateMeetingDetails = async (req, res) => {
   try {
     const { meetingId } = req.params;
     // Extract only the allowed fields from the request body
-    const { title, scheduled_time } = req.body; 
+    const { title, scheduled_time } = req.body;
     const updates = { title, scheduled_time }; // Map to DB columns if needed here or in model
 
     // Check if the user has permission (e.g., is admin or meeting creator)
@@ -264,16 +271,17 @@ exports.updateMeetingDetails = async (req, res) => {
 
     if (!updatedMeeting) {
       // This case is handled by the model throwing an error, but added for clarity
-      return res.status(404).json({ message: 'Meeting not found or update failed.' });
+      return res
+        .status(404)
+        .json({ message: "Meeting not found or update failed." });
     }
 
     // TODO: Consider transforming keys to camelCase before sending
     res.status(200).json(updatedMeeting);
-
   } catch (error) {
     console.error("Error updating meeting details:", error);
-    if (error.message === 'Meeting not found or update failed') {
-        return res.status(404).json({ message: error.message });
+    if (error.message === "Meeting not found or update failed") {
+      return res.status(404).json({ message: error.message });
     }
     res.status(500).json({ message: "Server error updating meeting details" });
   }
@@ -302,9 +310,11 @@ exports.deleteMeeting = async (req, res) => {
 
     // Respond with success (204 No Content is standard for DELETE)
     res.status(204).send();
-
   } catch (err) {
-    console.error(`Error deleting meeting ${req.params.meetingId}:`, err.message);
+    console.error(
+      `Error deleting meeting ${req.params.meetingId}:`,
+      err.message
+    );
     res.status(500).json({ message: "Server Error deleting meeting." });
   }
 };

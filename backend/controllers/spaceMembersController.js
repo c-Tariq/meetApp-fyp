@@ -59,6 +59,7 @@ exports.getAllMembersOfSpace = async (req, res) => {
 };
 
 exports.inviteToSpace = async (req, res) => {
+  console.log("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhwwwww");
   try {
     const { spaceId } = req.params;
     const { email } = req.body;
@@ -81,20 +82,21 @@ exports.inviteToSpace = async (req, res) => {
     // --- Add Check: Does the user exist in the system? ---
     const existingUser = await getUserByEmail(email);
     if (!existingUser) {
-        return res.status(404).json({ 
-            message: "Cannot invite this email: No registered user found with this address." 
-        });
+      return res.status(404).json({
+        message:
+          "Cannot invite this email: No registered user found with this address.",
+      });
     }
     // --- End Check ---
 
     // Check if user is already a member (Now we know existingUser is valid)
-      const isMember = await isUserMemberOfSpace(spaceId, existingUser.user_id);
-      if (isMember) {
-        return res
-          .status(400)
-          .json({ message: "User is already a member of this space" });
-      }
-    
+    const isMember = await isUserMemberOfSpace(spaceId, existingUser.user_id);
+    if (isMember) {
+      return res
+        .status(400)
+        .json({ message: "User is already a member of this space" });
+    }
+
     // Generate unique token
     const token = Invitation.generateToken();
 
@@ -121,10 +123,15 @@ exports.inviteToSpace = async (req, res) => {
       console.error("Error sending invitation email:", mailError);
       // Consider deleting the created DB invitation record here if email fails?
       await Invitation.deleteInvitationByToken(token); // Attempt to clean up DB record
-      console.log(`Cleaned up invitation record for token ${token} due to email failure.`);
+      console.log(
+        `Cleaned up invitation record for token ${token} due to email failure.`
+      );
       res
         .status(500)
-        .json({ message: "User found, but failed to send invitation email. Invitation cancelled." });
+        .json({
+          message:
+            "User found, but failed to send invitation email. Invitation cancelled.",
+        });
     }
   } catch (err) {
     console.error("Error in inviteToSpace:", err.message);
@@ -139,7 +146,11 @@ exports.acceptInvitation = async (req, res) => {
     // 1. Check Authentication
     if (!req.isAuthenticated()) {
       // Return error asking user to log in (suitable for API)
-      return res.status(401).json({ message: "Please log in or register to accept the invitation." });
+      return res
+        .status(401)
+        .json({
+          message: "Please log in or register to accept the invitation.",
+        });
     }
     const loggedInUserId = req.user.user_id;
     const loggedInUserEmail = req.user.email; // Assume email is available on req.user
@@ -149,7 +160,9 @@ exports.acceptInvitation = async (req, res) => {
 
     if (!invitation) {
       // Handles not found, expired, or already used based on model logic
-      return res.status(404).json({ message: "This invitation link is invalid or has expired." });
+      return res
+        .status(404)
+        .json({ message: "This invitation link is invalid or has expired." });
     }
 
     // Optional: More specific check if model can differentiate states
@@ -158,16 +171,25 @@ exports.acceptInvitation = async (req, res) => {
 
     // 3. Check Email Match
     if (invitation.email !== loggedInUserEmail) {
-      return res.status(403).json({ message: "This invitation is intended for a different email address." });
+      return res
+        .status(403)
+        .json({
+          message: "This invitation is intended for a different email address.",
+        });
     }
 
     // 4. Check if Already Member
-    const alreadyMember = await isUserMemberOfSpace(invitation.space_id, loggedInUserId);
+    const alreadyMember = await isUserMemberOfSpace(
+      invitation.space_id,
+      loggedInUserId
+    );
     if (alreadyMember) {
       // Mark token used even if already member to prevent reuse/clutter
       await Invitation.markInvitationUsed(token);
       // Use 409 Conflict as it's more semantic
-      return res.status(409).json({ message: "You are already a member of this space." });
+      return res
+        .status(409)
+        .json({ message: "You are already a member of this space." });
     }
 
     // 5. Add User to Space
@@ -179,12 +201,18 @@ exports.acceptInvitation = async (req, res) => {
     // 7. Send Success Response with spaceId for redirection
     res.status(200).json({
       message: "Successfully joined the space!",
-      spaceId: invitation.space_id // Include spaceId for frontend redirection
+      spaceId: invitation.space_id, // Include spaceId for frontend redirection
     });
-
   } catch (err) {
     // Log the specific error for debugging
-    console.error(`Error accepting invitation for token ${req.params.token}:`, err);
-    res.status(500).json({ message: "An unexpected error occurred while accepting the invitation." });
+    console.error(
+      `Error accepting invitation for token ${req.params.token}:`,
+      err
+    );
+    res
+      .status(500)
+      .json({
+        message: "An unexpected error occurred while accepting the invitation.",
+      });
   }
 };
