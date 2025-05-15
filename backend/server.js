@@ -4,7 +4,7 @@ const session = require('express-session');
 const userRoutes = require('./routes/userRoutes');
 const spaceRoutes = require('./routes/spaceRoutes');
 const pool = require('./config/dbConnection');
-// const camelCaseResponse = require('./middleware/caseConverter'); // Removed - File missing and not used
+// const camelCaseResponse = require('./middleware/caseConverter'); 
 const cors = require('cors');
 
 require('dotenv').config();
