@@ -18,27 +18,26 @@ const getDocumentsByTopicId = async (topicId) => {
   return result.rows;
 };
 
-// Function to get a single document by its ID
 const getDocumentById = async (documentId) => {
   const result = await pool.query(
     'SELECT * FROM document WHERE document_id = $1',
     [documentId]
   );
-  return result.rows[0]; // Returns the document record or undefined if not found
+  return result.rows[0]; 
 };
 
-// Function to delete a document record by its ID
+
 const deleteDocumentById = async (documentId) => {
   const result = await pool.query(
     'DELETE FROM document WHERE document_id = $1 RETURNING *',
     [documentId]
   );
-  return result.rowCount; // Returns the number of rows deleted (should be 1 or 0)
+  return result.rowCount; 
 };
 
 module.exports = {
   addDocument,
   getDocumentsByTopicId,
   getDocumentById,
-  deleteDocumentById // Export the new function
+  deleteDocumentById,
 };

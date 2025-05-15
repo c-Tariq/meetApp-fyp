@@ -9,10 +9,7 @@ const addTopic = async (meetingId, topicTitle) => {
 };
 
 const getTopicsByMeetingId = async (meetingId) => {
-  const result = await pool.query(
-    'SELECT * FROM topics WHERE meeting_id = $1',
-    [meetingId]
-  );
+  const result = await pool.query('SELECT * FROM topics WHERE meeting_id = $1',[meetingId]);
   return result.rows;
 };
 
@@ -25,10 +22,7 @@ const isTopicInMeeting = async (topicId, meetingId) => {
 };
 
 const getTopicById = async (topicId) => {
-  const result = await pool.query(
-    'SELECT * FROM topics WHERE topic_id = $1',
-    [topicId]
-  );
+  const result = await pool.query('SELECT * FROM topics WHERE topic_id = $1',[topicId]);
   return result.rows[0];
 };
 
@@ -38,18 +32,15 @@ const updateTopic = async (topicId, newTitle) => {
     [newTitle, topicId]
   );
   if (result.rows.length === 0) {
-    throw new Error('Topic not found or update failed');
+    throw new Error('topic not found or update failed');
   }
   return result.rows[0];
 };
 
 const deleteTopic = async (topicId) => {
-  const result = await pool.query(
-    'DELETE FROM topics WHERE topic_id = $1 RETURNING topic_id', // Return ID to confirm deletion
-    [topicId]
-  );
+  const result = await pool.query('DELETE FROM topics WHERE topic_id = $1 RETURNING topic_id',[topicId]);
   if (result.rows.length === 0) {
-    throw new Error('Topic not found or delete failed');
+    throw new Error('topic not found or delete failed');
   }
   return { deleted: true, topic_id: result.rows[0].topic_id };
 };

@@ -1,6 +1,5 @@
 const pool = require("../config/dbConnection");
 
-// Function to add a user to a space
 const addUserToSpace = async (space_id, user_id) => {
   const result = await pool.query(
     "INSERT INTO space_members (space_id, user_id) VALUES ($1, $2) RETURNING *",
@@ -9,16 +8,14 @@ const addUserToSpace = async (space_id, user_id) => {
   return result.rows[0];
 };
 
-// Function to check if a user is already a member of a space
 const isUserMemberOfSpace = async (space_id, user_id) => {
   const result = await pool.query(
     "SELECT * FROM space_members WHERE space_id = $1 AND user_id = $2",
     [space_id, user_id]
   );
-  return result.rows.length > 0; // Returns true if the user is a member
+  return result.rows.length > 0; 
 };
 
-// Function to get all members of a space
 const getAllMembersOfSpace = async (space_id) => {
   const result = await pool.query(
     `

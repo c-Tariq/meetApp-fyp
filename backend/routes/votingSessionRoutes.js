@@ -5,7 +5,6 @@ const { ensureAuthenticated } = require('../middleware/authMiddleware');
 const { checkSpaceMembership } = require('../middleware/authMiddleware');
 const { param, body, validationResult } = require('express-validator'); // Import validators
 
-// Validation middleware helper
 const validate = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -14,10 +13,7 @@ const validate = (req, res, next) => {
     next();
 };
 
-// Validation rules
-const pollIdValidation = [
-    param('pollId', 'Valid Poll ID is required').isInt({ min: 1 })
-];
+const pollIdValidation = [param('pollId', 'Valid Poll ID is required').isInt({ min: 1 })];
 
 const createPollValidation = [
     body('question', 'Poll question is required and must be a non-empty string').notEmpty().isString().trim(),
@@ -32,98 +28,106 @@ const castVoteValidation = [
     body('optionId', 'Option ID is required and must be an integer').isInt({ min: 1 })
 ];
 
-// Protected routes with validation and authorization
+// Protected routes 
+// POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls
 router.post('/', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space (derived from topicId)
+    checkSpaceMembership, 
     createPollValidation,
     validate, 
     votingSessionController.createPoll
-); // POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls
+); 
 
 router.get('/',
     ensureAuthenticated,
-    checkSpaceMembership, // User must be member of space derived from topicId
-    votingSessionController.getPollsForTopic // New controller function
+    checkSpaceMembership, 
+    votingSessionController.getPollsForTopic 
 );
 
+// POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls
 router.get('/:pollId', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space (derived from topicId -> pollId)
+    checkSpaceMembership, 
     pollIdValidation,
     validate, 
     votingSessionController.getPoll
-); // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId
+); 
 
-// New route to get options for a specific poll
+// POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls
 router.get('/:pollId/options',
     ensureAuthenticated,
-    checkSpaceMembership, // User must be member of space
-    pollIdValidation,     // Validate pollId format
+    checkSpaceMembership, 
+    pollIdValidation,     
     validate,
     votingSessionController.getPollOptions
-); // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/options
+); 
 
+// POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/options
 router.post('/:pollId/options', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space
+    checkSpaceMembership, 
     pollIdValidation,
     addOptionValidation,
     validate,
     votingSessionController.addPollOption
-); // POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/options
+); 
 
+// POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/vote
 router.post('/:pollId/vote', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space
+    checkSpaceMembership, 
     pollIdValidation,
     castVoteValidation,
     validate,
     votingSessionController.castVote
-); // POST /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/vote
+); 
 
+// GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/results
 router.get('/:pollId/results', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space
+    checkSpaceMembership, 
     pollIdValidation,
     validate,
     votingSessionController.getPollResults
-); // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/results
+); 
 
+// GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/vote-status
 router.get('/:pollId/vote-status', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space
+    checkSpaceMembership, 
     pollIdValidation,
     validate,
     votingSessionController.checkUserVoteStatus
-); // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/vote-status
+); 
 
-// Route for aggregated results
+// GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/aggregated-results
 router.get('/:pollId/aggregated-results', 
     ensureAuthenticated, 
-    checkSpaceMembership, // User must be member of space
-    pollIdValidation,     // Validate pollId format
-    validate,             // Apply validation
-    votingSessionController.getAggregatedResults // Call the new controller function
-); // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/aggregated-results
+    checkSpaceMembership, 
+    pollIdValidation,     
+    validate,             
+    votingSessionController.getAggregatedResults 
+); 
 
-// DELETE /:pollId - Delete a specific poll
+// DELETE /:pollId 
+// DELETE /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId
 router.delete('/:pollId', 
     ensureAuthenticated, 
-    pollIdValidation, // Use existing validation rule
+    pollIdValidation, 
     validate, 
     votingSessionController.deletePoll 
-); // DELETE /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId
+); 
 
-// DELETE /:pollId/options/:optionId - Delete a specific poll option
+// DELETE /:pollId/options/:optionId 
+// DELETE /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/options/:optionId
 router.delete('/:pollId/options/:optionId', 
     ensureAuthenticated, 
-    [ // Add validation for both IDs
+    [ 
         param('pollId', 'Valid Poll ID is required').isInt({ min: 1 }),
         param('optionId', 'Valid Option ID is required').isInt({ min: 1 })
     ], 
     validate, 
     votingSessionController.deletePollOption 
-); // DELETE /spaces/:spaceId/meetings/:meetingId/topics/:topicId/polls/:pollId/options/:optionId
+); 
 
 module.exports = router;

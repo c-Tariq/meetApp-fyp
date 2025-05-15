@@ -12,11 +12,6 @@ const markAttendance = async (meetingId, userId, isPresent) => {
   return result.rows[0];
 };
 
-/**
- * Fetches attendance records for a specific meeting, including usernames.
- * @param {number} meetingId - The ID of the meeting.
- * @returns {Promise<Array<object>>} - A promise that resolves to an array of attendance records.
- */
 const getAttendanceByMeetingId_OLD = async (meetingId) => {
   const result = await pool.query(
     `SELECT 
@@ -35,13 +30,6 @@ const getAttendanceByMeetingId_OLD = async (meetingId) => {
   return result.rows;
 };
 
-/**
- * Fetches all members of the space containing the meeting,
- * joined with their attendance status for that specific meeting.
- * @param {number} meetingId - The ID of the meeting.
- * @param {number} spaceId - The ID of the space.
- * @returns {Promise<Array<object>>} - A promise resolving to [{ user_id, username, is_present (boolean | null) }]
- */
 const getCombinedAttendanceForMeeting = async (meetingId, spaceId) => {
   const result = await pool.query(
     `SELECT
@@ -55,11 +43,7 @@ const getCombinedAttendanceForMeeting = async (meetingId, spaceId) => {
      ORDER BY u.username ASC`,
     [meetingId, spaceId]
   );
-  // Ensure is_present is explicitly boolean or null/false for consistency
-  return result.rows.map(row => ({
-    ...row,
-    is_present: row.is_present === null ? null : Boolean(row.is_present) // Or default to false: row.is_present ?? false
-  }));
+  return result.rows.map(row => ({...row,is_present: row.is_present === null ? null : Boolean(row.is_present) }));
 };
 
 module.exports = {

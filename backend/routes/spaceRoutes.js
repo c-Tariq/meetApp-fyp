@@ -11,7 +11,6 @@ router.get("/", ensureAuthenticated, spaceController.getAllSpaces); // GET /spac
 router.get("/:spaceId", ensureAuthenticated, spaceController.getSpace); // GET /spaces/spaceId
 router.delete("/:spaceId", ensureAuthenticated, spaceController.deleteSpace); // DELETE /spaces/:spaceId
 
-// Mount sub-routers
 router.use("/:spaceId/members", spaceMemberRoutes); // /spaces/:spaceId/members
 router.use("/:spaceId/meetings", meetingRoutes); // /spaces/:spaceId/meetings
 

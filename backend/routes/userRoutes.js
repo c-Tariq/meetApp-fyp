@@ -7,13 +7,13 @@ const passport = require('../config/passportConfig');
 const { validationResult } = require('express-validator');
 const { ensureAuthenticated } = require('../middleware/authMiddleware');
 
-// Configure login rate limiter
+// login limite
 const loginLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 10, // Limit each IP to 10 requests per `window` (here, per 15 minutes)
-	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: 'Too many login attempts from this IP, please try again after 15 minutes' // Custom message
+	max: 10, // limit each IP to 10 requests per 
+	standardHeaders: true, 
+	legacyHeaders: false, 
+  message: 'too many login attempts from this IP, please try again after 15 minutes' 
 });
 
 // rules
@@ -37,10 +37,7 @@ const registrationValidationRules = [
 router.get('/login', userController.loginPage);
 router.post('/login', loginLimiter, userController.handleLogin);
 router.get('/register', userController.registerPage);
-router.post('/register',
-  registrationValidationRules,
-  userController.handleRegistration
-);
+router.post('/register', registrationValidationRules,userController.handleRegistration);
 
 // protected routes
 router.get('/', ensureAuthenticated, userController.homePage);

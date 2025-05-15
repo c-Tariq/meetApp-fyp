@@ -1,14 +1,13 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true }); // Access :spaceId and :meetingId from parents
+const router = express.Router({ mergeParams: true }); 
 const topicsController = require('../controllers/topicsController');
 const { ensureAuthenticated } = require('../middleware/authMiddleware');
 const { checkSpaceMembership } = require('../middleware/authMiddleware');
-const { body, param, validationResult } = require('express-validator'); // Import validators
+const { body, param, validationResult } = require('express-validator'); 
 const commentRoutes = require('./commentRoutes');
 const documentRoutes = require('./documentRoutes');
 const votingSessionRoutes = require('./votingSessionRoutes');
 
-// Validation middleware helper
 const validate = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -21,44 +20,46 @@ const validate = (req, res, next) => {
 const topicIdValidation = [param('topicId', 'Valid Topic ID is required').isInt({ min: 1 })];
 const topicBodyValidation = [body('topic_title', 'Topic title is required and must be a non-empty string').notEmpty().isString().trim()];
 
-// Protected routes with validation and authorization
+// POST /spaces/:spaceId/meetings/:meetingId/topics
 router.post('/', 
     ensureAuthenticated, 
-    checkSpaceMembership, // Check if user is member of the space derived from meetingId
+    checkSpaceMembership,
     [
         body('topic_title', 'Topic title is required and must be a non-empty string').notEmpty().isString().trim()
     ],
     validate,
     topicsController.addTopic
-);          // POST /spaces/:spaceId/meetings/:meetingId/topics
+);          
 
+// GET /spaces/:spaceId/meetings/:meetingId/topics
 router.get('/', 
     ensureAuthenticated, 
     [
         param('meetingId', 'Valid Meeting ID is required').isInt({ min: 1 })
     ],
     validate, 
-    checkSpaceMembership, // Check if user is member of the space derived from meetingId
+    checkSpaceMembership, 
     topicsController.getMeetingTopics
-);   // GET /spaces/:spaceId/meetings/:meetingId/topics
+);   
 
+// GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId
 router.get('/:topicId', 
     ensureAuthenticated, 
     [
         param('topicId', 'Valid Topic ID is required').isInt({ min: 1 })
     ],
     validate,
-    checkSpaceMembership, // Check if user is member of the space derived from topicId
+    checkSpaceMembership, 
     topicsController.getTopic
-);   // GET /spaces/:spaceId/meetings/:meetingId/topics/:topicId
+);   
 
 // PATCH /spaces/:spaceId/meetings/:meetingId/topics/:topicId
 router.patch('/:topicId',
     ensureAuthenticated,
     topicIdValidation,
-    topicBodyValidation, // Validate new title in body
+    topicBodyValidation, 
     validate,
-    checkSpaceMembership, // Check membership before controller (controller also re-checks admin)
+    checkSpaceMembership, 
     topicsController.updateTopic
 );
 
@@ -67,7 +68,7 @@ router.delete('/:topicId',
     ensureAuthenticated,
     topicIdValidation,
     validate,
-    checkSpaceMembership, // Check membership before controller (controller also re-checks admin)
+    checkSpaceMembership, 
     topicsController.deleteTopic
 );
 

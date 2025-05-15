@@ -16,22 +16,15 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
   };
 
   const isPollInTopic = async (pollId, topicId) => {
-    const result = await pool.query(
-      'SELECT 1 FROM polls WHERE poll_id = $1 AND topic_id = $2',
-      [pollId, topicId]
-    );
+    const result = await pool.query('SELECT 1 FROM polls WHERE poll_id = $1 AND topic_id = $2',[pollId, topicId]);
     return result.rows.length > 0;
   };
 
   const getPollsByTopicId = async (topicId) => {
-    const result = await pool.query(
-      'SELECT * FROM polls WHERE topic_id = $1',
-      [topicId]
-    );
+    const result = await pool.query('SELECT * FROM polls WHERE topic_id = $1',[topicId]);
     return result.rows;
   };
 
-//   Add option to a poll
   const addPollOption = async (pollId, optionText) => {
     const result = await pool.query(
       `INSERT INTO poll_options (poll_id, option_text)
@@ -43,24 +36,17 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
   };
 
   const getOptionsByPollId = async (pollId) => {
-    const result = await pool.query(
-      'SELECT * FROM poll_options WHERE poll_id = $1',
-      [pollId]
-    );
+    const result = await pool.query('SELECT * FROM poll_options WHERE poll_id = $1',[pollId]);
     return result.rows;
   };
   
-//   Check if option exists in pol
   const isOptionInPoll = async (optionId, pollId) => {
-    const result = await pool.query(
-      'SELECT 1 FROM poll_options WHERE option_id = $1 AND poll_id = $2',
-      [optionId, pollId]
-    );
+    const result = await pool.query('SELECT 1 FROM poll_options WHERE option_id = $1 AND poll_id = $2',[optionId, pollId]);
     return result.rows.length > 0;
   };
   
 
-  //   Record a vote
+  
   const castVote = async (pollId, optionId, userId) => {
     const result = await pool.query(
       `INSERT INTO votes (poll_id, option_id, user_id)
@@ -73,7 +59,6 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
     return result.rows[0];
   };
 
-//    * Get votes for a poll
   const getVotesByPollId = async (pollId) => {
     const result = await pool.query(
       `SELECT v.*, u.username, po.option_text 
@@ -86,7 +71,6 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
     return result.rows;
   };
 
-//   Check if user has voted in poll
   const hasUserVoted = async (pollId, userId) => {
     const result = await pool.query(
       'SELECT 1 FROM votes WHERE poll_id = $1 AND user_id = $2',
@@ -95,7 +79,6 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
     return result.rows.length > 0;
   };
 
-//   Get aggregated vote counts for a poll
   const getAggregatedPollResults = async (pollId) => {
     const result = await pool.query(
       `SELECT 
@@ -115,35 +98,16 @@ const createPoll = async (topicId, userId, question, expiresAt) => {
       `,
       [pollId]
     );
-    // Ensure vote_count is a number
     return result.rows.map(row => ({ ...row, vote_count: parseInt(row.vote_count, 10) })); 
   };
 
-/**
- * Deletes a poll and potentially its associated options and votes (if CASCADE is set up).
- * @param {number} pollId - The ID of the poll to delete.
- * @returns {Promise<number>} - A promise that resolves to the number of deleted rows (0 or 1).
- */
 const deletePoll = async (pollId) => {
-    // Assumes ON DELETE CASCADE is set for poll_options and votes referencing poll_id
-    const result = await pool.query(
-        'DELETE FROM polls WHERE poll_id = $1', // Correct table name: polls
-        [pollId]
-    );
+    const result = await pool.query('DELETE FROM polls WHERE poll_id = $1',[pollId]);
     return result.rowCount;
 };
 
-/**
- * Deletes a specific poll option.
- * @param {number} optionId - The ID of the option to delete.
- * @returns {Promise<number>} - A promise that resolves to the number of deleted rows (0 or 1).
- */
 const deletePollOption = async (optionId) => {
-    // Assumes ON DELETE CASCADE is set for votes referencing option_id, OR handle votes deletion separately
-    const result = await pool.query(
-        'DELETE FROM poll_options WHERE option_id = $1',
-        [optionId]
-    );
+    const result = await pool.query('DELETE FROM poll_options WHERE option_id = $1',[optionId]);
     return result.rowCount;
 };
 

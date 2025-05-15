@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { ScreenShare, Video, VideoOff, Download, Loader, Upload, Mic, Volume2, FileUp } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { ScreenShare, Video, VideoOff, Download, Loader, Upload, Mic, Volume2 } from 'lucide-react';
 
 const ActionButton = ({ onClick, disabled, children, className = '', id = null }) => (
     <button
@@ -20,6 +20,7 @@ const StatusDisplay = ({ status }) => (
 );
 
 export default function ScreenRecorder() {
+    // Using props instead of useParams from react-router-dom
     const { spaceId, meetingId } = useParams();
 
     const [isSelecting, setIsSelecting] = useState(false);
@@ -29,6 +30,7 @@ export default function ScreenRecorder() {
     const [isUploading, setIsUploading] = useState(false);
     const [recordingMode, setRecordingMode] = useState('screen'); // 'screen' or 'audio'
     const [recordingStatus, setRecordingStatus] = useState('');
+    const [uploadedFile, setUploadedFile] = useState(null);
 
     const videoPreviewRef = useRef(null);
     const audioContextRef = useRef(null);
@@ -37,6 +39,7 @@ export default function ScreenRecorder() {
     const finalStreamRef = useRef(null);
     const recorderRef = useRef(null);
     const chunksRef = useRef([]);
+    const fileInputRef = useRef(null);
 
     const MimeType = recordingMode === 'screen' 
         ? 'video/webm;codecs=vp9,opus' 
@@ -294,6 +297,33 @@ export default function ScreenRecorder() {
         URL.revokeObjectURL(url);
     }, [blobForDownload, recordingMode]);
 
+    const handleFileSelect = useCallback((e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Clear previous file
+        setUploadedFile(file);
+        setBlobForDownload(file);
+        
+        // Determine file type
+        if (file.type.startsWith('video/')) {
+            setRecordingMode('screen');
+        } else if (file.type.startsWith('audio/')) {
+            setRecordingMode('audio');
+        }
+        
+        setRecordingStatus(`File "${file.name}" selected. Ready to upload.`);
+        
+        // Preview the file if it's a video
+        if (file.type.startsWith('video/') && videoPreviewRef.current) {
+            const url = URL.createObjectURL(file);
+            videoPreviewRef.current.src = url;
+            videoPreviewRef.current.onloadedmetadata = () => {
+                videoPreviewRef.current.play();
+            };
+        }
+    }, []);
+
     const handleUpload = useCallback(async () => {
         if (!blobForDownload) {
             console.error("No recording blob available to upload.");
@@ -314,20 +344,28 @@ export default function ScreenRecorder() {
         setRecordingStatus('Uploading recording...');
 
         const formData = new FormData();
-        const extension = recordingMode === 'screen' ? 'webm' : 'webm';
-        const fileType = recordingMode === 'screen' ? 'video/webm' : 'audio/webm';
+        let fileToUpload;
         
-        const recordingFile = new File(
-            [blobForDownload], 
-            `recording-${meetingId}-${Date.now()}.${extension}`, 
-            { type: fileType }
-        );
+        if (uploadedFile) {
+            // If we're using an uploaded file, use it directly
+            fileToUpload = uploadedFile;
+        } else {
+            // Otherwise use the recorded blob
+            const extension = recordingMode === 'screen' ? 'webm' : 'webm';
+            const fileType = recordingMode === 'screen' ? 'video/webm' : 'audio/webm';
+            
+            fileToUpload = new File(
+                [blobForDownload], 
+                `recording-${meetingId}-${Date.now()}.${extension}`, 
+                { type: fileType }
+            );
+        }
         
-        formData.append('recording', recordingFile);
+        formData.append('recording', fileToUpload);
         formData.append('recordingType', recordingMode); // Add recording type for server-side handling
         
         try {
-            const response = await fetch(`/api/spaces/${spaceId}/meetings/${meetingId}/recording`, {
+            const response = await fetch(`/api/spaces/${spaceId}/meetings/${meetingId}/ai/recording`, {
                 method: 'POST',
                 body: formData,
             });
@@ -342,6 +380,12 @@ export default function ScreenRecorder() {
                 console.log('Upload successful:', result);
                 alert('Recording uploaded and processing started!');
                 setRecordingStatus('Recording uploaded successfully!');
+                
+                // Reset the uploaded file state
+                setUploadedFile(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
             }
         } catch (error) {
             console.error('Error during upload:', error);
@@ -350,7 +394,13 @@ export default function ScreenRecorder() {
         } finally {
             setIsUploading(false);
         }
-    }, [blobForDownload, isUploading, spaceId, meetingId, recordingMode]);
+    }, [blobForDownload, isUploading, spaceId, meetingId, recordingMode, uploadedFile]);
+
+    const handleTriggerFileInput = useCallback(() => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    }, []);
 
     const canSelect = !isSelecting && !isRecording;
     const canRecord = !!finalStreamRef.current && !isRecording && !isSelecting && !isProcessing;
@@ -363,7 +413,7 @@ export default function ScreenRecorder() {
                 <div className="p-6 sm:p-8">
                     <h1 className="text-2xl font-bold text-center text-blue-900 mb-6">Media Recorder</h1>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                         <ActionButton
                             id="selectScreenBtn"
                             onClick={handleSelectScreenAndMic}
@@ -389,8 +439,28 @@ export default function ScreenRecorder() {
                             ) : (
                                 <Volume2 className="h-5 w-5 mr-2" />
                             )}
-                            {isSelecting && recordingMode === 'audio' ? 'Selecting...' : 'Audio Only (Mic & System)'}
+                            {isSelecting && recordingMode === 'audio' ? 'Selecting...' : 'Audio Only'}
                         </ActionButton>
+                        
+                        <ActionButton
+                            id="uploadFileBtn"
+                            onClick={handleTriggerFileInput}
+                            disabled={isRecording || isProcessing}
+                            className="bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            <FileUp className="h-5 w-5 mr-2" />
+                            Upload File
+                        </ActionButton>
+                        
+                        {/* Hidden file input */}
+                        <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={handleFileSelect}
+                            accept="video/*, audio/*"
+                            className="hidden"
+                            aria-hidden="true"
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -422,17 +492,18 @@ export default function ScreenRecorder() {
                         <StatusDisplay status={recordingStatus} />
                     )}
 
-                    <div className={`bg-blue-900 rounded-lg mb-6 overflow-hidden aspect-video shadow-inner ${recordingMode === 'audio' ? 'hidden' : ''}`}>
+                    <div className={`bg-blue-900 rounded-lg mb-6 overflow-hidden aspect-video shadow-inner ${recordingMode === 'audio' && !uploadedFile ? 'hidden' : ''}`}>
                         <video
                             ref={videoPreviewRef}
                             autoPlay
                             muted
                             playsInline
                             className="w-full h-full object-contain block"
+                            controls={!!uploadedFile}
                         />
                     </div>
 
-                    {recordingMode === 'audio' && !isRecording && !blobForDownload && (
+                    {recordingMode === 'audio' && !isRecording && !blobForDownload && !uploadedFile && (
                         <div className="flex items-center justify-center h-40 bg-white rounded-lg mb-6 border border-blue-200">
                             <div className="text-center text-blue-900">
                                 <Volume2 className="h-16 w-16 mx-auto mb-2" />
@@ -475,6 +546,14 @@ export default function ScreenRecorder() {
                             {isUploading ? 'Uploading...' : 'Upload'}
                         </ActionButton>
                     </div>
+                    
+                    {uploadedFile && (
+                        <div className="mt-4 p-3 bg-white rounded border border-blue-200">
+                            <p className="text-sm text-blue-900">
+                                <span className="font-medium">Selected file:</span> {uploadedFile.name} ({(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
