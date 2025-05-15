@@ -1206,21 +1206,22 @@ export default function BilingualMeeting({ meeting, onUpdateMeeting, isSpaceAdmi
               <SectionHeader title={t.followUpTasks}>
               </SectionHeader>
               <ContentBox dir="auto">
-                {meetingTasks.length > 0 ? (
-                  <div className="space-y-4">
-                    {meetingTasks.map((task) => (
-                      <div key={task.id} className="flex items-start gap-3">
-                        <input type="checkbox" defaultChecked={task.checked} className="accent-blue-700 mt-1" />
-                        <div className="flex-1">
-                          <span className={`text-sm block ${task.checked ? 'line-through text-slate-500' : 'text-slate-800'}`}>
-                            {task.text}
-                          </span>
-                          <div className="text-xs text-blue-700 mt-1">Owner: {task.owner}</div>
-                          <div className="text-xs text-blue-700">Deadline: {task.deadline}</div>
-                        </div>
-                      </div>
-                    ))}
+              {meetingTasks.length > 0 ? (
+              <div className="space-y-4">
+                {meetingTasks.map((task, index) => (
+                  <div key={task.id} className={`flex items-start gap-3 ${index % 3 !== 0 ? 'ml-6' : ''}`}> {}
+                    <div className="flex-1">
+                      <span
+                        className={`text-sm block ${
+                          task.checked ? 'line-through text-slate-500' : 'text-slate-800'
+                        } ${index % 3 !== 0 ? 'text-xs' : 'font-semibold'}`} 
+                      >
+                        {task.text}
+                      </span>
+                    </div>
                   </div>
+                ))}
+              </div>
                 ) : (
                   <p className="text-sm text-gray-500">No follow-up tasks identified.</p>
                 )}
