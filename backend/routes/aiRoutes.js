@@ -1,14 +1,11 @@
 const express = require("express");
-// Merge params to access :meetingId from the parent router (meetingRoutes)
-const router = express.Router({ mergeParams: true }); 
+const router = express.Router({ mergeParams: true });
 const aiProcessingController = require("../controllers/aiProcessingController");
 const recordingController = require("../controllers/recordingController");
 const { ensureAuthenticated } = require("../middleware/authMiddleware");
 const { checkSpaceMembership } = require("../middleware/authMiddleware");
 const { param, body, validationResult } = require("express-validator");
 
-// Validation middleware helper (copied from meetingRoutes for now)
-// TODO: Consider moving validation logic to a dedicated middleware/util file
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -17,10 +14,6 @@ const validate = (req, res, next) => {
   next();
 };
 
-// Validation rules (copied from meetingRoutes for now)
-const meetingIdValidation = [
-  param("meetingId", "Valid Meeting ID is required").isInt({ min: 1 }),
-];
 const transcriptBodyValidation = [
   body("message", "Transcript text (message) is required in the body")
     .notEmpty()
@@ -32,11 +25,10 @@ const transcriptBodyValidation = [
 router.post(
   "/process-transcript",
   ensureAuthenticated,
-  // meetingIdValidation is not needed here as meetingId comes from merged params
-  transcriptBodyValidation, // Validate body has the transcript text
+  transcriptBodyValidation,
   validate,
-  checkSpaceMembership, // User must be member of the space containing the meeting
-  aiProcessingController.processTranscript // Use the new controller
+  checkSpaceMembership,
+  aiProcessingController.processTranscript
 );
 
 // POST route to upload RECORDING and trigger processing
@@ -44,11 +36,9 @@ router.post(
 router.post(
   "/recording",
   ensureAuthenticated,
-  // meetingIdValidation is not needed here as meetingId comes from merged params
-  // validate is not strictly needed here unless more params are added
-  checkSpaceMembership, // Check membership *before* multer processes file
-  recordingController.recordingUploadMiddleware, // Use middleware exported from controller
-  recordingController.uploadAndProcessRecording // Use the recording controller logic
+  checkSpaceMembership,
+  recordingController.recordingUploadMiddleware,
+  recordingController.uploadAndProcessRecording
 );
 
-module.exports = router; 
+module.exports = router;
