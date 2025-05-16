@@ -67,7 +67,6 @@ router.post(
 router.get(
   "/:meetingId",
   ensureAuthenticated,
-  meetingIdValidation,
   validate,
   checkSpaceMembership,
   meetingController.getMeeting
@@ -76,7 +75,6 @@ router.get(
 router.put(
   "/:meetingId/status",
   ensureAuthenticated,
-  meetingIdValidation,
   updateStatusValidation,
   validate,
   checkSpaceMembership,
@@ -86,7 +84,6 @@ router.put(
 router.patch(
   "/:meetingId",
   ensureAuthenticated,
-  meetingIdValidation,
   validate,
   checkSpaceMembership,
   meetingController.updateMeetingDetails
@@ -95,7 +92,6 @@ router.patch(
 router.delete(
   "/:meetingId",
   ensureAuthenticated,
-  meetingIdValidation,
   validate,
   checkSpaceMembership,
   meetingController.deleteMeeting
