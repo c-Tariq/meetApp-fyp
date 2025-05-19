@@ -11,7 +11,7 @@ const openai = new OpenAI({
 
 // check if text is Arabic
 function isArabic(text) {
-  const arabicRegex = /[\u0600-\u06FF]/; 
+  const arabicRegex = /[\u0600-\u06FF]/;
   return arabicRegex.test(text);
 }
 
@@ -113,20 +113,31 @@ async function processTranscript(req, res) {
       callOpenAI(tasksPrompt, transcriptText),
     ]);
 
-    const summary = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
-    const tasks = tasksResult.status === 'fulfilled' ? tasksResult.value : null;
+    const summary =
+      summaryResult.status === "fulfilled" ? summaryResult.value : null;
+    const tasks = tasksResult.status === "fulfilled" ? tasksResult.value : null;
 
-    if (summaryResult.status !== 'fulfilled') {
-        console.error(`OpenAI summary failed for meeting ${meetingId}:`, summaryResult.reason);
+    if (summaryResult.status !== "fulfilled") {
+      console.error(
+        `OpenAI summary failed for meeting ${meetingId}:`,
+        summaryResult.reason
+      );
     }
-    if (tasksResult.status !== 'fulfilled') {
-        console.error(`OpenAI tasks failed for meeting ${meetingId}:`, tasksResult.reason);
+    if (tasksResult.status !== "fulfilled") {
+      console.error(
+        `OpenAI tasks failed for meeting ${meetingId}:`,
+        tasksResult.reason
+      );
     }
 
     // Update the meeting record in the database (only if at least one succeeded)
     let updatedMeeting = null;
     if (summary !== null || tasks !== null) {
-         updatedMeeting = await updateMeetingSummaryAndTasks(meetingId, summary, tasks);
+      updatedMeeting = await updateMeetingSummaryAndTasks(
+        meetingId,
+        summary,
+        tasks
+      );
     }
 
     // Return the results
@@ -140,15 +151,20 @@ async function processTranscript(req, res) {
     });
   } catch (error) {
     console.error("Error processing transcript or updating meeting:", error);
-    if (error.message === "Meeting not found" || error.message === "Meeting not found or update failed") {
+    if (
+      error.message === "Meeting not found" ||
+      error.message === "Meeting not found or update failed"
+    ) {
       return res.status(404).json({ message: error.message });
     }
     // Distinguish between OpenAI API errors and other server errors if possible
     const isApiError = error.response && error.response.data; // Basic check
     if (isApiError) {
-       console.error("AI Service Error Response Data:", error.response.data);
-       console.error("AI Service Error Response Status:", error.response.status);
-       return res.status(500).json({ message: "Error communicating with AI service." });
+      console.error("AI Service Error Response Data:", error.response.data);
+      console.error("AI Service Error Response Status:", error.response.status);
+      return res
+        .status(500)
+        .json({ message: "Error communicating with AI service." });
     }
     // Generic server error
     res.status(500).json({ message: "Server error processing transcript" });
@@ -160,4 +176,4 @@ module.exports = {
   getSystemPrompts,
   callOpenAI,
   processTranscript,
-}; 
+};

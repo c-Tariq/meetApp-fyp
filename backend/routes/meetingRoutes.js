@@ -35,8 +35,6 @@ router.post("/", ensureAuthenticated, meetingController.createMeeting); // POST 
 router.get("/", ensureAuthenticated, meetingController.getSpaceMeetings); // GET api/spaces/:spaceId/meetings
 router.get("/:meetingId", ensureAuthenticated, meetingController.getMeeting); // GET api/spaces/:spaceId/meetings/:meetingId
 
-router.get("/search", ensureAuthenticated, meetingController.searchMeetings); // GET api/spaces/:spaceId/meetings/search
-
 router.use("/:meetingId/topics", topicRoutes); // api/spaces/:spaceId/meetings/:meetingId/topics
 router.use("/:meetingId/attendance", attendanceRoutes); // api/spaces/:spaceId/meetings/:meetingId/attendance
 router.use("/:meetingId/comments", commentRoutes);

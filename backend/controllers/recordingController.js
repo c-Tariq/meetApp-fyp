@@ -22,9 +22,9 @@ const {
 } = require("./aiProcessingController"); // Import from new AI controller
 
 // --- Directory Setup --- (No longer needed for video disk storage)
-// const baseUploadDir = path.join(__dirname, '..', 'uploads'); 
-// const videoDir = path.join(baseUploadDir, 'videos');     
-// fsSync.mkdirSync(videoDir, { recursive: true }); 
+// const baseUploadDir = path.join(__dirname, '..', 'uploads');
+// const videoDir = path.join(baseUploadDir, 'videos');
+// fsSync.mkdirSync(videoDir, { recursive: true });
 
 // --- Multer Configuration for Recording Uploads (Using Memory Storage) ---
 const memoryStorage = multer.memoryStorage(); // Use memoryStorage again
@@ -38,7 +38,7 @@ const fileFilter = (req, file, cb) => {
     file.mimetype === "video/mp4" ||
     file.mimetype === "audio/webm" || // Allow audio uploads too if needed
     file.mimetype === "audio/mp4" ||
-    file.mimetype === "audio/mpeg" 
+    file.mimetype === "audio/mpeg"
   ) {
     cb(null, true); // Accept file
   } else {
@@ -62,13 +62,15 @@ const recordingUploadMiddleware = multer({
 // --- End Multer Configuration ---
 
 // Helper function for audio extraction - MODIFIED back to accept buffer
-async function extractAudio(videoBuffer, inputFileName) { 
+async function extractAudio(videoBuffer, inputFileName) {
   // Write buffer to a temporary file first
   const tempInputPath = path.join(os.tmpdir(), `rec_in_${inputFileName}`);
   await fs.writeFile(tempInputPath, videoBuffer);
   console.log(`Temporarily saved video buffer to: ${tempInputPath}`);
 
-  const outputFileName = `audio_out_${path.parse(inputFileName).name}_${Date.now()}.mp3`;
+  const outputFileName = `audio_out_${
+    path.parse(inputFileName).name
+  }_${Date.now()}.mp3`;
   const tempOutputPath = path.join(os.tmpdir(), outputFileName);
 
   console.log(
@@ -77,9 +79,9 @@ async function extractAudio(videoBuffer, inputFileName) {
 
   return new Promise((resolve, reject) => {
     ffmpeg(tempInputPath) // Use the temporary input path
-      .noVideo() 
-      .audioCodec("libmp3lame") 
-      .audioBitrate("192k") 
+      .noVideo()
+      .audioCodec("libmp3lame")
+      .audioBitrate("192k")
       .output(tempOutputPath)
       .on("end", async () => {
         console.log("Audio extraction finished successfully.");
@@ -89,9 +91,13 @@ async function extractAudio(videoBuffer, inputFileName) {
             `Read extracted audio buffer size: ${audioBuffer.length}`
           );
           // Clean up temporary AUDIO file AND temporary INPUT file
-          await fs.unlink(tempInputPath); 
+          await fs.unlink(tempInputPath);
           await fs.unlink(tempOutputPath);
-          console.log("Temporary files deleted:", tempInputPath, tempOutputPath);
+          console.log(
+            "Temporary files deleted:",
+            tempInputPath,
+            tempOutputPath
+          );
           resolve({ audioBuffer, outputFileName });
         } catch (readError) {
           console.error(
@@ -106,8 +112,12 @@ async function extractAudio(videoBuffer, inputFileName) {
       .on("error", (err) => {
         console.error("Error during ffmpeg processing:", err);
         // Attempt cleanup of both temp files even on error
-        fs.unlink(tempInputPath).catch(e => console.error("Error deleting temp input on error:", e));
-        fs.unlink(tempOutputPath).catch(e => console.error("Error deleting temp audio output on error:", e));
+        fs.unlink(tempInputPath).catch((e) =>
+          console.error("Error deleting temp input on error:", e)
+        );
+        fs.unlink(tempOutputPath).catch((e) =>
+          console.error("Error deleting temp audio output on error:", e)
+        );
         reject(new Error(`Audio extraction failed: ${err.message}`));
       })
       .run();
@@ -127,8 +137,10 @@ exports.uploadAndProcessRecording = async (req, res) => {
     return res.status(401).json({ message: "User not authenticated." });
   }
 
-  console.log(`Processing uploaded recording in memory for meeting ${meetingId}`);
-  
+  console.log(
+    `Processing uploaded recording in memory for meeting ${meetingId}`
+  );
+
   let extractedAudioInfo = null;
   let transcript = null;
   let summary = null;
@@ -139,8 +151,9 @@ exports.uploadAndProcessRecording = async (req, res) => {
     // 1. Extract Audio from Video Buffer
     console.log(`Extracting audio for meeting ${meetingId}...`);
     // Use originalname or generate one if needed for temp file
-    const inputFileName = file.originalname || `meeting_${meetingId}_${Date.now()}.webm`;
-    extractedAudioInfo = await extractAudio(file.buffer, inputFileName); 
+    const inputFileName =
+      file.originalname || `meeting_${meetingId}_${Date.now()}.webm`;
+    extractedAudioInfo = await extractAudio(file.buffer, inputFileName);
     console.log(`Audio extracted for meeting ${meetingId}.`);
 
     // 2. Transcribe using the controller (sends audio buffer)
@@ -240,7 +253,8 @@ exports.uploadAndProcessRecording = async (req, res) => {
 
     // 6. Final Response based on errors collected
     if (processingError) {
-      return res.status(207).json({ // 207 Multi-Status
+      return res.status(207).json({
+        // 207 Multi-Status
         message: `Recording processed with errors: ${processingError}`,
         // recordingFile: file.filename, // No longer saving original file
         transcript: transcript,
@@ -249,8 +263,7 @@ exports.uploadAndProcessRecording = async (req, res) => {
       });
     } else {
       return res.status(200).json({
-        message:
-          "Recording processed in memory and data saved successfully.", // Updated message
+        message: "Recording processed in memory and data saved successfully.", // Updated message
         // recordingFile: file.filename, // No longer saving original file
         transcriptLength: transcript?.length,
         summaryGenerated: !!summary,
@@ -273,12 +286,12 @@ exports.uploadAndProcessRecording = async (req, res) => {
     return res.status(statusCode).json({
       message: error.message || "Failed to process recording.",
     });
-  } 
+  }
   // Removed complex finally block, extractAudio handles its temp file cleanup
 };
 
 // Export both the controller logic and the configured middleware
 module.exports = {
-    uploadAndProcessRecording: exports.uploadAndProcessRecording,
-    recordingUploadMiddleware // Export the middleware instance
+  uploadAndProcessRecording: exports.uploadAndProcessRecording,
+  recordingUploadMiddleware, // Export the middleware instance
 };
