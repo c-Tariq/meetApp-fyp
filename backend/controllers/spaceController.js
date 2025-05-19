@@ -39,16 +39,6 @@ exports.createSpace = async (req, res) => {
   }
 };
 
-// exports.getAllSpaces = async (req, res) => {
-//   try {
-//     const spaces = await getAllSpaces();
-//     res.json(spaces);
-//   } catch (err) {
-//     console.error(err.message);
-//     res.status(500).send("Server Error");
-//   }
-// };
-
 exports.getAllSpaces = async (req, res) => {
   try {
     if (!req.user || !req.user.user_id) {
@@ -68,10 +58,9 @@ exports.getAllSpaces = async (req, res) => {
 
 exports.deleteSpace = async (req, res) => {
   try {
-    const { spaceId } = req.params; // Correctly get spaceId from URL parameters
-    const user_id = req.user.user_id; // Use authenticated user's ID
+    const { spaceId } = req.params;
+    const user_id = req.user.user_id;
 
-    // Check if the user is the admin of this space
     const isAdmin = await isSpaceAdmin(spaceId, user_id); // Use spaceId here
     if (!isAdmin) {
       return res
@@ -79,8 +68,7 @@ exports.deleteSpace = async (req, res) => {
         .json({ message: "You are not authorized to delete this space" });
     }
 
-    // Proceed with deletion
-    const deletedSpace = await deleteSpace(spaceId); // Use spaceId here
+    const deletedSpace = await deleteSpace(spaceId);
     if (!deletedSpace) {
       return res.status(404).json({ message: "Space not found" });
     }
@@ -95,8 +83,8 @@ exports.deleteSpace = async (req, res) => {
 
 exports.getSpace = async (req, res) => {
   try {
-    const { spaceId } = req.params; // Get spaceId from URL parameters
-    const userId = req.user.user_id; // Get authenticated user's ID
+    const { spaceId } = req.params;
+    const userId = req.user.user_id;
 
     if (!userId) {
       return res.status(401).json({ message: "Authentication required." });
@@ -105,8 +93,6 @@ exports.getSpace = async (req, res) => {
     const space = await getSpaceById(spaceId, userId);
 
     if (!space) {
-      // If space is null, it means either not found OR user not authorized.
-      // Responding with 404 is common practice to avoid revealing existence.
       return res
         .status(404)
         .json({ message: "Space not found or access denied." });

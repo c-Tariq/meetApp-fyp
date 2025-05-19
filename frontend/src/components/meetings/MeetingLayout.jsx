@@ -5,6 +5,7 @@ import { SectionHeader, ContentBox } from './MeetingComponents';
 import AttendanceSection from './AttendanceSection';
 import MainMeetingContent from './MainMeetingContent';
 import TopicsSection from './TopicsSection';
+import axios from 'axios';
 
 const staticTranslations = {
   EN: {
@@ -43,6 +44,21 @@ export default function MeetingLayout({
 }) {
   const navigate = useNavigate();
   const t = staticTranslations.EN;
+
+  const handleStatusChange = async (newStatus) => {
+    if (!meeting?.meeting_id || !meeting?.space_id) return;
+    
+    try {
+      await axios.put(`/api/spaces/${meeting.space_id}/meetings/${meeting.meeting_id}/status`, {
+        status: newStatus
+      });
+      // Refresh the meeting data to show updated status
+      window.location.reload();
+    } catch (err) {
+      console.error("Error updating meeting status:", err);
+      alert(err.response?.data?.message || 'Failed to update meeting status');
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Date not set';
@@ -111,9 +127,22 @@ export default function MeetingLayout({
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <h1 className="text-xl font-bold text-blue-900">{meeting?.title || 'Meeting Title'}</h1>
               {meeting?.status && (
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                  {meeting.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {/* <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                    {meeting.status}
+                  </span> */}
+                  {isCurrentUserSpaceAdmin && (
+                    <select
+                      value={meeting.status}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className="text-xs border border-blue-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="Upcoming">Upcoming</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Concluded">Concluded</option>
+                    </select>
+                  )}
+                </div>
               )}
               <span className="text-sm text-blue-700">{formatDate(meeting?.scheduled_time)}</span>
             </div>

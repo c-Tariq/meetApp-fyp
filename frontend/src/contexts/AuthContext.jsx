@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.get('/api/logout');
+      await axios.post('/api/logout');
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
